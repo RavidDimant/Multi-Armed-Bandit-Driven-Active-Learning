@@ -1,7 +1,6 @@
 import copy
 import math
 import time
-
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -15,19 +14,21 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
+plt.switch_backend('TkAgg')
 
 
 def generate_plot(accuracy_scores_dict):
     """
-    Generate a plot with specified figure size
+    Generate a plot for the accuracy scores
     """
-    plt.figure(figsize=(15, 9))  # Adjust width and height as desired
     for criterion, accuracy_scores in accuracy_scores_dict.items():
         plt.plot(range(1, len(accuracy_scores) + 1), accuracy_scores, label=criterion)
+
     plt.xlabel('Iterations')
     plt.ylabel('Accuracy')
-    # plt.title('')
+    plt.title('Accuracy Scores for Different Criteria')
     plt.legend()
+    plt.grid(True)  # Optional: Adds gridlines to the plot
     plt.show()
 
 
@@ -51,7 +52,6 @@ class UCB:
         self.mus[arm] = ((n - 1) / n) * self.mus[arm] + (1 / n) * reward
 
 
-
 class ActiveLearningPipeline:
 
     def __init__(self, iterations, budget_per_iter, data_path, train_label_test_split: tuple):
@@ -70,13 +70,13 @@ class ActiveLearningPipeline:
         test_df = data_df.iloc[train_label_test_split[1]:train_label_test_split[2]]
 
         labeled_data = {'x': [np.array(row) for row in labeled_df.drop('Diabetes', axis=1).to_numpy()],
-                      'y': np.array([l for l in labeled_df['Diabetes']])}
+                        'y': np.array([l for l in labeled_df['Diabetes']])}
 
         unlabeled_data = {'x': [np.array(row) for row in unlabeled_df.drop('Diabetes', axis=1).to_numpy()],
-                      'y':  np.array([l for l in unlabeled_df['Diabetes']])}
+                          'y': np.array([l for l in unlabeled_df['Diabetes']])}
 
         test_data = {'x': [np.array(row) for row in test_df.drop('Diabetes', axis=1).to_numpy()],
-                     'y':  np.array([l for l in test_df['Diabetes']])}
+                     'y': np.array([l for l in test_df['Diabetes']])}
 
         self.data = {'labeled_data': labeled_data, 'unlabeled_data': unlabeled_data, 'test_data': test_data}
         self.copy_data = {}
@@ -120,42 +120,6 @@ class ActiveLearningPipeline:
 
         return selected_indices
 
-    # ________________
-
-    # def _worst_similarity_sampling(self, _):
-    #     labeled_x, labeled_y, unlabeled_x, unlabeled_y, _, _ = self.get_data_copy()
-    #
-    #     loss_func = lambda pred_probs, real: -math.log(pred_probs[real] + 1e-3)
-    #
-    #     # use model to predict prob of train
-    #     y_pred = self.model.predict_proba(labeled_x)
-    #
-    #     loss = [loss_func(p, y) for p, y in zip(y_pred, labeled_y)]
-    #     worst_indices = np.argsort(loss)[::-1]
-    #
-    #     selected_indices = []
-    #     for ind in worst_indices:
-    #
-    #         similarities = cosine_similarity(labeled_x[ind].reshape(1, -1), np.array(unlabeled_x))[0]
-    #         most_similar = np.argsort(similarities)[::-1]
-    #         print(most_similar)
-    #         exit(0)
-    #         for s in most_similar:
-    #             if s not in selected_indices:
-    #                 selected_indices.append(s)
-    #                 break
-    #
-    #         if len(selected_indices) == self.budget_per_iter:
-    #             break
-    #
-    #     #
-    #     print(len(selected_indices))
-    #     # print(selected_indices)
-    #     # print("ok")
-    #     # exit(0)
-    #
-    #     return selected_indices
-
     def _diversity_sampling(self, _):
         # Calculate pairwise distances between samples
         from sklearn.metrics import pairwise_distances
@@ -194,9 +158,66 @@ class ActiveLearningPipeline:
 
         # Select samples with the smallest margins (closest to the decision boundary)
         selected_indices = list(np.argsort(margins)[:self.budget_per_iter])
-        # if not isinstance(selected_indices, list):
-        #     print("_margin_sampling")
-        #     exit(0)
+        return selected_indices
+
+    def qbc_sampling(self, _):
+        def train_committee(X, y, n_models):
+            """
+            Receives a dataset X and labels Y, sub-samples from them and trains `n_models` different logistic regression models.
+            """
+            # Create a list for the committe of models
+            models = []
+            total_samples = X.shape[0]
+            n_samples = int(total_samples * 0.7)
+            for _ in range(n_models):
+                # Create a model
+                model = LogisticRegression(max_iter=200)
+
+                # Sample 70% of the dataset
+                sampled_indices = np.random.choice(total_samples, size=n_samples, replace=False)
+                X_sampled = X[sampled_indices]
+                Y_sampled = y[sampled_indices]
+
+                # Train the model
+                model.fit(X_sampled, Y_sampled)
+
+                # Save the trained model
+                models.append(model)
+            return models
+
+        def qbc_disagreement(models, X_unlabeled):
+            """
+            Recieves a list of models and unlabeled data and via Query-By-Committee returns the entropy for all the predictions
+            """
+            n_models = len(models)
+            # Create a variable to store the predictions of the committee
+            predictions = np.zeros((n_models, X_unlabeled.shape[0]))  # shape: (n_models, n_samples)
+            # Get the predicted label from each model in the committe
+            for i, member in enumerate(models):
+                predictions[i] = member.predict(X_unlabeled)
+            # Tally the votes - for each label, count how many models classifed each sample as that label
+            vote_counts = np.apply_along_axis(
+                lambda x: np.bincount(x.astype(int), minlength=2),
+                axis=0,
+                arr=predictions,
+            )
+            # Calculate the vote entropy as seen in the QBC formula
+            vote_entropy = -np.sum((vote_counts / n_models) * np.log(vote_counts / n_models + 1e-10), axis=0)
+            return vote_entropy
+
+        n_select_per_iteration = self.budget_per_iter
+        n_models = 7
+
+        X_labeled = np.array(self.copy_data['labeled_data']['x'])
+        y_labeled = np.array(self.copy_data['labeled_data']['y'])
+        X_unlabeled = np.array(self.copy_data['unlabeled_data']['x'])
+
+        # Train the committee of models
+        models = train_committee(X_labeled, y_labeled, n_models)
+        # Calculate disagreement
+        disagreements = qbc_disagreement(models, X_unlabeled)
+        # Select the samples with the highest disagreement
+        selected_indices = np.argsort(disagreements)[-n_select_per_iteration:]
         return selected_indices
 
     def risk_based_sampling(self, y_pred):
@@ -242,7 +263,6 @@ class ActiveLearningPipeline:
         selected_indices = np.argsort(combined_scores)[-self.budget_per_iter:]
         return list(selected_indices)
 
-
     " Multi armed bandit pipline "
 
     def MAB_pipeline(self, mab, predicted_probabilities):
@@ -250,11 +270,12 @@ class ActiveLearningPipeline:
         def get_reward(pred_probs, real, epsilon=1e-3):
             return -math.log(pred_probs[real] + epsilon)
 
-        mab = UCB(6)
+        mab = UCB(7)
 
         sampling_method = [self._random_sampling, self._uncertainty_sampling, self._diversity_sampling,
-                           self._density_weighted_uncertainty_sampling, self._margin_sampling, self.risk_based_sampling]
-        sm_rankings = {sm.__name__: sm(predicted_probabilities) for sm in sampling_method}
+                           self._density_weighted_uncertainty_sampling, self._margin_sampling, self.risk_based_sampling,
+                           self.qbc_sampling]
+        sm_rankings = {sm.__name__: list(sm(predicted_probabilities)) for sm in sampling_method}
         chosen_samples = set()
 
         # 1 - initial step - choose each arm once
@@ -269,7 +290,8 @@ class ActiveLearningPipeline:
             chosen_arm = mab.choose_arm()
             chosen_sample_ind = sm_rankings[sampling_method[chosen_arm].__name__].pop(0)
             chosen_samples.add(chosen_sample_ind)
-            reward = get_reward(predicted_probabilities[chosen_sample_ind], self.data['unlabeled_data']['y'][chosen_sample_ind])
+            reward = get_reward(predicted_probabilities[chosen_sample_ind],
+                                self.data['unlabeled_data']['y'][chosen_sample_ind])
             mab.update(chosen_arm, reward)
 
         return list(chosen_samples)
@@ -283,7 +305,6 @@ class ActiveLearningPipeline:
         #     self.get_data_copy()
 
         self.copy_data = copy.deepcopy(self.data)
-
 
         mab = UCB(6)
 
@@ -320,7 +341,8 @@ class ActiveLearningPipeline:
                 add_to_train_indices = self._margin_sampling(y_pred)
             elif selection_criterion == 'risk_based':
                 add_to_train_indices = self.risk_based_sampling(y_pred)
-
+            elif selection_criterion == 'QBC':
+                add_to_train_indices = self.qbc_sampling(y_pred)
             elif selection_criterion == 'MAB':
                 add_to_train_indices = self.MAB_pipeline(mab, y_pred)
             else:
@@ -328,7 +350,8 @@ class ActiveLearningPipeline:
 
             for idx in sorted(add_to_train_indices, reverse=True):
                 self.copy_data['labeled_data']['x'].append(self.copy_data['unlabeled_data']['x'].pop(idx))
-                self.copy_data['labeled_data']['y'] = np.append(self.copy_data['labeled_data']['y'], self.copy_data['unlabeled_data']['y'][idx])
+                self.copy_data['labeled_data']['y'] = np.append(self.copy_data['labeled_data']['y'],
+                                                                self.copy_data['unlabeled_data']['y'][idx])
                 self.copy_data['unlabeled_data']['y'] = np.delete(self.copy_data['unlabeled_data']['y'], idx)
 
             # 4. Compute accuracy
@@ -338,29 +361,21 @@ class ActiveLearningPipeline:
             accuracy = round(float(accuracy), 3)
             accuracy_scores.append(accuracy)
 
-
         return accuracy_scores
-
 
 
 if __name__ == '__main__':
 
     al = ActiveLearningPipeline(iterations=10, budget_per_iter=400, data_path=r"converted_data.csv",
-                           train_label_test_split=(1000, 5000, 5500))
-
-    # sampling_methods_to_try = ['MAB', 'random', 'uncertainty', 'worst_similarity']
-    # sampling_methods_to_try = ['MAB', 'random', 'uncertainty']
-    # sampling_methods_to_try = ['worst_similarity']
+                                train_label_test_split=(1000, 5000, 5500))
 
     # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
     #                            'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
-
-    sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
-                               'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
+    sampling_methods_to_try = ['MAB', 'QBC', 'risk_based', 'random', 'uncertainty']
 
     methods_performance = {}
     for sm in sampling_methods_to_try:
-        print("="*10, sm, "="*10)
+        print("=" * 10, sm, "=" * 10)
         sm_result = al.run_pipeline(selection_criterion=sm)
         methods_performance[sm] = sm_result
 
