@@ -88,11 +88,15 @@ class ActiveLearningPipeline:
         health_condition3_index = features_list.index('General_Health_Good')
         health_condition4_index = features_list.index('General_Health_Poor')
         health_condition5_index = features_list.index('General_Health_Very Good')
+        arthritis_index = features_list.index('Arthritis')
+        exercise_index = features_list.index('Exercise')
+        sex_index = features_list.index('Sex')
+        skin_cancer_index = features_list.index('Skin_Cancer')
 
         # Compute risk score: higher BMI, older age, presence of heart disease or smoking history increase risk
         unlabeled_x = np.array(unlabeled_x)
         bmi_normalized = (unlabeled_x[:, bmi_index] - 15) / (40 - 15)  # Rescale BMI to 0-1 range
-        risk_scores = (bmi_normalized * 0.4 +  # Weight BMI more
+        risk_scores = (bmi_normalized * 0.3 +  # Weight BMI more
                        (unlabeled_x[:, elderly_age1_index] +  # Age contributes as well
                         unlabeled_x[:, elderly_age2_index] +
                         unlabeled_x[:, elderly_age3_index]) * 0.1 +
@@ -102,18 +106,15 @@ class ActiveLearningPipeline:
                         unlabeled_x[:, health_condition2_index] +
                         unlabeled_x[:, health_condition3_index] +
                         unlabeled_x[:, health_condition4_index] +
-                        unlabeled_x[:, health_condition5_index]) * 0.1)
-
+                        unlabeled_x[:, health_condition5_index]) * 0.1 +
+                       unlabeled_x[:, arthritis_index] * 0.1)
         # Combine uncertainty and risk score
-        combined_scores = uncertainties * risk_scores
-
+        combined_scores = (0.5 * uncertainties) + (0.5 * risk_scores)
         # Select samples with the highest combined score
         selected_indices = np.argsort(combined_scores)[-n_select:]
-
         return selected_indices
 
     " Main Method "
-
     def run_pipeline(self, selection_criterion):
         """ Run the active learning pipeline """
 
