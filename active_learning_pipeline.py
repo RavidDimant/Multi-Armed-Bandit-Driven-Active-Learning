@@ -60,11 +60,12 @@ class ActiveLearningPipeline:
         self.model = None
         self.iterations = iterations
         self.budget_per_iter = budget_per_iter
+        self.feature_of_interest = feature_of_interest
 
         # read and prepare train data, data to label and test data
         data_df = pd.read_csv(data_path)
         data_df = shuffle(data_df, random_state=42)
-
+        self.data_df = data_df
         # Convert train_label_test_split from percentages to row indices
         total_rows = len(data_df)
         train_size = int(total_rows * train_label_test_split[0])
@@ -105,9 +106,6 @@ class ActiveLearningPipeline:
         return labeled_data_x, labeled_data_y, unlabeled_data_x, unlabeled_data_y, test_data_x, test_data_y
 
     " Sampling Methods "
-
-    # TODO:
-    #   - maybe send n_select instead of computing it (for MAB could use n_select = 1)
 
     def _random_sampling(self, predicted_probabilities):
         pool_size = len(predicted_probabilities)
@@ -240,6 +238,7 @@ class ActiveLearningPipeline:
         selected_indices = np.argsort(disagreements)[-n_select_per_iteration:]
         return selected_indices
 
+    """
     def risk_based_sampling(self, y_pred):
         # Calculate uncertainty (entropy)
         uncertainties = entropy(y_pred.T)
@@ -277,6 +276,43 @@ class ActiveLearningPipeline:
                         unlabeled_x[:, health_condition4_index] +
                         unlabeled_x[:, health_condition5_index]) * 0.1 +
                        unlabeled_x[:, arthritis_index] * 0.1)
+        # Combine uncertainty and risk score
+        combined_scores = (0.5 * uncertainties) + (0.5 * risk_scores)
+        # Select samples with the highest combined score
+        selected_indices = np.argsort(combined_scores)[-self.budget_per_iter:]
+        return list(selected_indices)
+        """
+
+    def risk_based_sampling(self, y_pred):
+        def get_top_correlated_features(top_n=10):
+            # Compute correlations with feature_of_interest
+            correlations = self.data_df.corr()[self.feature_of_interest].abs().sort_values(ascending=False)
+            return np.array(correlations.index[1:top_n + 1])  # exclude feature_of_interest itself
+
+        def assign_feature_weights(correlated_features):
+            # Define a weight dictionary, modify as needed for different datasets
+            weights = {feature: 1 / len(correlated_features) for feature in
+                       correlated_features}  # Equal weight for simplicity
+            return weights
+
+        uncertainties = entropy(y_pred.T)
+        num_of_features = len(self.features)
+        correlated_features = get_top_correlated_features(top_n=int(0.3*num_of_features))
+        feature_indices = [list(self.features).index(f) for f in correlated_features]
+
+        unlabeled_x = np.array(self.copy_data['unlabeled_data']['x'])
+        risk_scores = np.zeros(len(unlabeled_x))
+        # weights based on feature correlations or importance
+        weights = assign_feature_weights(correlated_features)  # Assumes a dictionary with feature weights
+
+        for i, feature_index in enumerate(feature_indices):
+            # Rescale feature to 0-1 if it isn’t already
+            feature_values = unlabeled_x[:, feature_index]
+            feature_min, feature_max = feature_values.min(), feature_values.max()
+            normalized_feature = (feature_values - feature_min) / (feature_max - feature_min)
+            # Update risk scores with weighted normalized values
+            risk_scores += normalized_feature * weights[correlated_features[i]]
+
         # Combine uncertainty and risk score
         combined_scores = (0.5 * uncertainties) + (0.5 * risk_scores)
         # Select samples with the highest combined score
@@ -440,7 +476,7 @@ if __name__ == '__main__':
 
     # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
     #                            'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
-    sampling_methods_to_try = ['MAB', 'thompson', 'QBC', 'uncertainty', 'random']
+    sampling_methods_to_try = ['risk_based', 'MAB', 'thompson', 'QBC', 'random']
 
     methods_performance = {}
     for sm in sampling_methods_to_try:
