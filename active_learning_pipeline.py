@@ -54,9 +54,10 @@ class UCB:
 
 class ActiveLearningPipeline:
 
-    def __init__(self, feature_of_interest, iterations, budget_per_iter, data_path, train_label_test_split: tuple):
+    def __init__(self, iterations, budget_per_iter, data_path, train_label_test_split: tuple):
 
-        self.model = None
+        self.model = None  # model
+
         self.iterations = iterations
         self.budget_per_iter = budget_per_iter
 
@@ -64,30 +65,23 @@ class ActiveLearningPipeline:
         data_df = pd.read_csv(data_path)
         data_df = shuffle(data_df, random_state=42)
 
-        # Convert train_label_test_split from percentages to row indices
-        total_rows = len(data_df)
-        train_size = int(total_rows * train_label_test_split[0])
-        label_size = int(total_rows * train_label_test_split[1])
-        test_size = int(total_rows * train_label_test_split[2])
-        # Split data into train, label, and test sets
-        labeled_df = data_df.iloc[:train_size]
-        unlabeled_df = data_df.iloc[train_size:train_size + label_size]
-        test_df = data_df.iloc[train_size + label_size:train_size + label_size + test_size]
+        labeled_df = data_df.iloc[:train_label_test_split[0]]
+        unlabeled_df = data_df.iloc[train_label_test_split[0]:train_label_test_split[1]]
+        test_df = data_df.iloc[train_label_test_split[1]:train_label_test_split[2]]
 
-        labeled_data = {'x': [np.array(row) for row in labeled_df.drop(feature_of_interest, axis=1).to_numpy()],
-                        'y': np.array([l for l in labeled_df[feature_of_interest]])}
+        labeled_data = {'x': [np.array(row) for row in labeled_df.drop('Diabetes', axis=1).to_numpy()],
+                        'y': np.array([l for l in labeled_df['Diabetes']])}
 
-        unlabeled_data = {'x': [np.array(row) for row in unlabeled_df.drop(feature_of_interest, axis=1).to_numpy()],
-                          'y': np.array([l for l in unlabeled_df[feature_of_interest]])}
+        unlabeled_data = {'x': [np.array(row) for row in unlabeled_df.drop('Diabetes', axis=1).to_numpy()],
+                          'y': np.array([l for l in unlabeled_df['Diabetes']])}
 
-        test_data = {'x': [np.array(row) for row in test_df.drop(feature_of_interest, axis=1).to_numpy()],
-                     'y': np.array([l for l in test_df[feature_of_interest]])}
+        test_data = {'x': [np.array(row) for row in test_df.drop('Diabetes', axis=1).to_numpy()],
+                     'y': np.array([l for l in test_df['Diabetes']])}
 
         self.data = {'labeled_data': labeled_data, 'unlabeled_data': unlabeled_data, 'test_data': test_data}
         self.copy_data = {}
 
-        self.features = np.array(data_df.drop(feature_of_interest, axis=1).columns)
-        self.sampling_methods = None
+        self.features = np.array(data_df.drop('Diabetes', axis=1).columns)
 
     " Auxiliary methods "
 
@@ -174,12 +168,13 @@ class ActiveLearningPipeline:
             # Create a list for the committe of models
             models = []
             total_samples = X.shape[0]
+            n_samples = int(total_samples * 0.7)
             for _ in range(n_models):
                 # Create a model
                 model = LogisticRegression(max_iter=200)
 
-                # Sample self.budget_per_iter of the dataset
-                sampled_indices = np.random.choice(total_samples, size=self.budget_per_iter, replace=False)
+                # Sample 70% of the dataset
+                sampled_indices = np.random.choice(total_samples, size=n_samples, replace=False)
                 X_sampled = X[sampled_indices]
                 Y_sampled = y[sampled_indices]
 
@@ -196,7 +191,7 @@ class ActiveLearningPipeline:
             """
             n_models = len(models)
             # Create a variable to store the predictions of the committee
-            predictions = np.zeros((n_models, X_unlabeled.shape[0]))
+            predictions = np.zeros((n_models, X_unlabeled.shape[0]))  # shape: (n_models, n_samples)
             # Get the predicted label from each model in the committe
             for i, member in enumerate(models):
                 predictions[i] = member.predict(X_unlabeled)
@@ -268,53 +263,6 @@ class ActiveLearningPipeline:
         selected_indices = np.argsort(combined_scores)[-self.budget_per_iter:]
         return list(selected_indices)
 
-    def metropolis_hastings_sampling(self, predicted_probabilities):
-        if len(predicted_probabilities.shape) > 1:
-            predicted_probabilities = np.max(predicted_probabilities, axis=1)
-        proposal_std = 0.1
-        num_data = len(predicted_probabilities)
-        selected_indices = []
-        # Start with a random initial index
-        current_index = np.random.randint(0, num_data)
-        selected_indices.append(current_index)
-        while len(selected_indices) < self.budget_per_iter:
-            # Propose a new index by adding Gaussian noise to the current index
-            proposed_index = int(current_index + np.random.normal(0, proposal_std) * num_data)
-            proposed_index = np.clip(proposed_index, 0, num_data - 1)
-
-            # Acceptance criterion: higher probabilities are preferred
-            acceptance_ratio = min(
-                1,
-                predicted_probabilities[proposed_index] / predicted_probabilities[current_index]
-            )
-            # Accept or reject the proposal
-            if np.random.rand() < acceptance_ratio:
-                selected_indices.append(proposed_index)
-                current_index = proposed_index
-        return list(set(selected_indices))
-
-    def thompson_sampling(self, predicted_probabilities):
-        y_true = self.copy_data['unlabeled_data']['y']
-        num_data = len(predicted_probabilities)
-        selected_indices = []
-
-        # Initialize success/failure counts for each sample
-        successes = np.ones(num_data)  # Start with prior of 1 success
-        failures = np.ones(num_data)  # Start with prior of 1 failure
-
-        for _ in range(self.budget_per_iter):
-            # Draw a sample for each index from the Beta distribution
-            samples = np.random.beta(successes + 1, failures + 1)
-            # Select the index with the highest sampled probability
-            chosen_index = np.argmax(samples)
-            selected_indices.append(chosen_index)
-            # Update success/failure counts based on actual reward
-            if y_true[chosen_index] == 1:
-                successes[chosen_index] += 1
-            else:
-                failures[chosen_index] += 1
-        return list(set(selected_indices))
-
     " Multi armed bandit pipline "
 
     def MAB_pipeline(self, mab, predicted_probabilities):
@@ -322,11 +270,16 @@ class ActiveLearningPipeline:
         def get_reward(pred_probs, real, epsilon=1e-3):
             return -math.log(pred_probs[real] + epsilon)
 
-        sm_rankings = {sm.__name__: list(sm(predicted_probabilities)) for sm in self.sampling_methods}
+        mab = UCB(7)
+
+        sampling_method = [self._random_sampling, self._uncertainty_sampling, self._diversity_sampling,
+                           self._density_weighted_uncertainty_sampling, self._margin_sampling, self.risk_based_sampling,
+                           self.qbc_sampling]
+        sm_rankings = {sm.__name__: list(sm(predicted_probabilities)) for sm in sampling_method}
         chosen_samples = set()
 
         # 1 - initial step - choose each arm once
-        for arm_idx, sm in enumerate(self.sampling_methods):
+        for arm_idx, sm in enumerate(sampling_method):
             chosen_ind = sm_rankings[sm.__name__].pop(0)
             chosen_samples.add(chosen_ind)
             reward = get_reward(predicted_probabilities[chosen_ind], self.data['unlabeled_data']['y'][chosen_ind])
@@ -335,7 +288,7 @@ class ActiveLearningPipeline:
         # 2 - start exploration/exploitation
         while len(chosen_samples) != self.budget_per_iter:
             chosen_arm = mab.choose_arm()
-            chosen_sample_ind = sm_rankings[self.sampling_methods[chosen_arm].__name__].pop(0)
+            chosen_sample_ind = sm_rankings[sampling_method[chosen_arm].__name__].pop(0)
             chosen_samples.add(chosen_sample_ind)
             reward = get_reward(predicted_probabilities[chosen_sample_ind],
                                 self.data['unlabeled_data']['y'][chosen_sample_ind])
@@ -353,11 +306,7 @@ class ActiveLearningPipeline:
 
         self.copy_data = copy.deepcopy(self.data)
 
-        self.sampling_methods = [self._random_sampling, self._uncertainty_sampling, self._diversity_sampling,
-                                 self._density_weighted_uncertainty_sampling, self._margin_sampling,
-                                 self.risk_based_sampling,self.qbc_sampling, self.metropolis_hastings_sampling,
-                                 self.thompson_sampling]
-        mab = UCB(len(self.sampling_methods))
+        mab = UCB(6)
 
         accuracy_scores = []
         for iteration in range(self.iterations):
@@ -381,6 +330,9 @@ class ActiveLearningPipeline:
                 add_to_train_indices = self._random_sampling(y_pred)
             elif selection_criterion == 'uncertainty':
                 add_to_train_indices = self._uncertainty_sampling(y_pred)
+            # elif selection_criterion == 'worst_similarity':
+            #     add_to_train_indices = self._worst_similarity_sampling(y_pred)
+
             elif selection_criterion == 'diversity':
                 add_to_train_indices = self._diversity_sampling(y_pred)
             elif selection_criterion == 'density_weighted_uncertainty':
@@ -391,10 +343,6 @@ class ActiveLearningPipeline:
                 add_to_train_indices = self.risk_based_sampling(y_pred)
             elif selection_criterion == 'QBC':
                 add_to_train_indices = self.qbc_sampling(y_pred)
-            elif selection_criterion == 'metropolis_hastings':
-                add_to_train_indices = self.metropolis_hastings_sampling(y_pred)
-            elif selection_criterion == 'thompson':
-                add_to_train_indices = self.thompson_sampling(y_pred)
             elif selection_criterion == 'MAB':
                 add_to_train_indices = self.MAB_pipeline(mab, y_pred)
             else:
@@ -418,14 +366,12 @@ class ActiveLearningPipeline:
 
 if __name__ == '__main__':
 
-    feature_of_interest = 'Diabetes'
-
-    al = ActiveLearningPipeline(feature_of_interest, iterations=10, budget_per_iter=400, data_path=r"converted_data.csv",
-                                train_label_test_split=(0.03, 0.06, 0.01))
+    al = ActiveLearningPipeline(iterations=10, budget_per_iter=400, data_path=r"converted_data.csv",
+                                train_label_test_split=(1000, 5000, 5500))
 
     # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
     #                            'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
-    sampling_methods_to_try = ['MAB', 'thompson', 'QBC', 'uncertainty', 'random']
+    sampling_methods_to_try = ['MAB', 'QBC', 'risk_based', 'random', 'uncertainty']
 
     methods_performance = {}
     for sm in sampling_methods_to_try:
