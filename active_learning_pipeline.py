@@ -54,10 +54,9 @@ class UCB:
 
 class ActiveLearningPipeline:
 
-    def __init__(self, iterations, budget_per_iter, data_path, train_label_test_split: tuple):
+    def __init__(self, feature_of_interest, iterations, budget_per_iter, data_path, train_label_test_split: tuple):
 
-        self.model = None  # model
-
+        self.model = None
         self.iterations = iterations
         self.budget_per_iter = budget_per_iter
 
@@ -65,23 +64,30 @@ class ActiveLearningPipeline:
         data_df = pd.read_csv(data_path)
         data_df = shuffle(data_df, random_state=42)
 
-        labeled_df = data_df.iloc[:train_label_test_split[0]]
-        unlabeled_df = data_df.iloc[train_label_test_split[0]:train_label_test_split[1]]
-        test_df = data_df.iloc[train_label_test_split[1]:train_label_test_split[2]]
+        # Convert train_label_test_split from percentages to row indices
+        total_rows = len(data_df)
+        train_size = int(total_rows * train_label_test_split[0])
+        label_size = int(total_rows * train_label_test_split[1])
+        test_size = int(total_rows * train_label_test_split[2])
+        # Split data into train, label, and test sets
+        labeled_df = data_df.iloc[:train_size]
+        unlabeled_df = data_df.iloc[train_size:train_size + label_size]
+        test_df = data_df.iloc[train_size + label_size:train_size + label_size + test_size]
 
-        labeled_data = {'x': [np.array(row) for row in labeled_df.drop('Diabetes', axis=1).to_numpy()],
-                        'y': np.array([l for l in labeled_df['Diabetes']])}
+        labeled_data = {'x': [np.array(row) for row in labeled_df.drop(feature_of_interest, axis=1).to_numpy()],
+                        'y': np.array([l for l in labeled_df[feature_of_interest]])}
 
-        unlabeled_data = {'x': [np.array(row) for row in unlabeled_df.drop('Diabetes', axis=1).to_numpy()],
-                          'y': np.array([l for l in unlabeled_df['Diabetes']])}
+        unlabeled_data = {'x': [np.array(row) for row in unlabeled_df.drop(feature_of_interest, axis=1).to_numpy()],
+                          'y': np.array([l for l in unlabeled_df[feature_of_interest]])}
 
-        test_data = {'x': [np.array(row) for row in test_df.drop('Diabetes', axis=1).to_numpy()],
-                     'y': np.array([l for l in test_df['Diabetes']])}
+        test_data = {'x': [np.array(row) for row in test_df.drop(feature_of_interest, axis=1).to_numpy()],
+                     'y': np.array([l for l in test_df[feature_of_interest]])}
 
         self.data = {'labeled_data': labeled_data, 'unlabeled_data': unlabeled_data, 'test_data': test_data}
         self.copy_data = {}
 
-        self.features = np.array(data_df.drop('Diabetes', axis=1).columns)
+        self.features = np.array(data_df.drop(feature_of_interest, axis=1).columns)
+        self.sampling_methods = None
 
     " Auxiliary methods "
 
@@ -316,16 +322,11 @@ class ActiveLearningPipeline:
         def get_reward(pred_probs, real, epsilon=1e-3):
             return -math.log(pred_probs[real] + epsilon)
 
-        mab = UCB(9)
-
-        sampling_method = [self._random_sampling, self._uncertainty_sampling, self._diversity_sampling,
-                           self._density_weighted_uncertainty_sampling, self._margin_sampling, self.risk_based_sampling,
-                           self.qbc_sampling, self.metropolis_hastings_sampling, self.thompson_sampling]
-        sm_rankings = {sm.__name__: list(sm(predicted_probabilities)) for sm in sampling_method}
+        sm_rankings = {sm.__name__: list(sm(predicted_probabilities)) for sm in self.sampling_methods}
         chosen_samples = set()
 
         # 1 - initial step - choose each arm once
-        for arm_idx, sm in enumerate(sampling_method):
+        for arm_idx, sm in enumerate(self.sampling_methods):
             chosen_ind = sm_rankings[sm.__name__].pop(0)
             chosen_samples.add(chosen_ind)
             reward = get_reward(predicted_probabilities[chosen_ind], self.data['unlabeled_data']['y'][chosen_ind])
@@ -334,7 +335,7 @@ class ActiveLearningPipeline:
         # 2 - start exploration/exploitation
         while len(chosen_samples) != self.budget_per_iter:
             chosen_arm = mab.choose_arm()
-            chosen_sample_ind = sm_rankings[sampling_method[chosen_arm].__name__].pop(0)
+            chosen_sample_ind = sm_rankings[self.sampling_methods[chosen_arm].__name__].pop(0)
             chosen_samples.add(chosen_sample_ind)
             reward = get_reward(predicted_probabilities[chosen_sample_ind],
                                 self.data['unlabeled_data']['y'][chosen_sample_ind])
@@ -352,7 +353,11 @@ class ActiveLearningPipeline:
 
         self.copy_data = copy.deepcopy(self.data)
 
-        mab = UCB(6)
+        self.sampling_methods = [self._random_sampling, self._uncertainty_sampling, self._diversity_sampling,
+                                 self._density_weighted_uncertainty_sampling, self._margin_sampling,
+                                 self.risk_based_sampling,self.qbc_sampling, self.metropolis_hastings_sampling,
+                                 self.thompson_sampling]
+        mab = UCB(len(self.sampling_methods))
 
         accuracy_scores = []
         for iteration in range(self.iterations):
@@ -376,9 +381,6 @@ class ActiveLearningPipeline:
                 add_to_train_indices = self._random_sampling(y_pred)
             elif selection_criterion == 'uncertainty':
                 add_to_train_indices = self._uncertainty_sampling(y_pred)
-            # elif selection_criterion == 'worst_similarity':
-            #     add_to_train_indices = self._worst_similarity_sampling(y_pred)
-
             elif selection_criterion == 'diversity':
                 add_to_train_indices = self._diversity_sampling(y_pred)
             elif selection_criterion == 'density_weighted_uncertainty':
@@ -416,12 +418,14 @@ class ActiveLearningPipeline:
 
 if __name__ == '__main__':
 
-    al = ActiveLearningPipeline(iterations=10, budget_per_iter=400, data_path=r"converted_data.csv",
-                                train_label_test_split=(1000, 5000, 5500))
+    feature_of_interest = 'Diabetes'
+
+    al = ActiveLearningPipeline(feature_of_interest, iterations=10, budget_per_iter=400, data_path=r"converted_data.csv",
+                                train_label_test_split=(0.03, 0.06, 0.01))
 
     # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
     #                            'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
-    sampling_methods_to_try = ['MAB', 'thompson', 'QBC', 'risk_based', 'random']
+    sampling_methods_to_try = ['MAB', 'thompson', 'QBC', 'uncertainty', 'random']
 
     methods_performance = {}
     for sm in sampling_methods_to_try:
