@@ -168,13 +168,12 @@ class ActiveLearningPipeline:
             # Create a list for the committe of models
             models = []
             total_samples = X.shape[0]
-            n_samples = int(total_samples * 0.7)
             for _ in range(n_models):
                 # Create a model
                 model = LogisticRegression(max_iter=200)
 
-                # Sample 70% of the dataset
-                sampled_indices = np.random.choice(total_samples, size=n_samples, replace=False)
+                # Sample self.budget_per_iter of the dataset
+                sampled_indices = np.random.choice(total_samples, size=self.budget_per_iter, replace=False)
                 X_sampled = X[sampled_indices]
                 Y_sampled = y[sampled_indices]
 
@@ -191,7 +190,7 @@ class ActiveLearningPipeline:
             """
             n_models = len(models)
             # Create a variable to store the predictions of the committee
-            predictions = np.zeros((n_models, X_unlabeled.shape[0]))  # shape: (n_models, n_samples)
+            predictions = np.zeros((n_models, X_unlabeled.shape[0]))
             # Get the predicted label from each model in the committe
             for i, member in enumerate(models):
                 predictions[i] = member.predict(X_unlabeled)
@@ -263,6 +262,53 @@ class ActiveLearningPipeline:
         selected_indices = np.argsort(combined_scores)[-self.budget_per_iter:]
         return list(selected_indices)
 
+    def metropolis_hastings_sampling(self, predicted_probabilities):
+        if len(predicted_probabilities.shape) > 1:
+            predicted_probabilities = np.max(predicted_probabilities, axis=1)
+        proposal_std = 0.1
+        num_data = len(predicted_probabilities)
+        selected_indices = []
+        # Start with a random initial index
+        current_index = np.random.randint(0, num_data)
+        selected_indices.append(current_index)
+        while len(selected_indices) < self.budget_per_iter:
+            # Propose a new index by adding Gaussian noise to the current index
+            proposed_index = int(current_index + np.random.normal(0, proposal_std) * num_data)
+            proposed_index = np.clip(proposed_index, 0, num_data - 1)
+
+            # Acceptance criterion: higher probabilities are preferred
+            acceptance_ratio = min(
+                1,
+                predicted_probabilities[proposed_index] / predicted_probabilities[current_index]
+            )
+            # Accept or reject the proposal
+            if np.random.rand() < acceptance_ratio:
+                selected_indices.append(proposed_index)
+                current_index = proposed_index
+        return list(set(selected_indices))
+
+    def thompson_sampling(self, predicted_probabilities):
+        y_true = self.copy_data['unlabeled_data']['y']
+        num_data = len(predicted_probabilities)
+        selected_indices = []
+
+        # Initialize success/failure counts for each sample
+        successes = np.ones(num_data)  # Start with prior of 1 success
+        failures = np.ones(num_data)  # Start with prior of 1 failure
+
+        for _ in range(self.budget_per_iter):
+            # Draw a sample for each index from the Beta distribution
+            samples = np.random.beta(successes + 1, failures + 1)
+            # Select the index with the highest sampled probability
+            chosen_index = np.argmax(samples)
+            selected_indices.append(chosen_index)
+            # Update success/failure counts based on actual reward
+            if y_true[chosen_index] == 1:
+                successes[chosen_index] += 1
+            else:
+                failures[chosen_index] += 1
+        return list(set(selected_indices))
+
     " Multi armed bandit pipline "
 
     def MAB_pipeline(self, mab, predicted_probabilities):
@@ -270,11 +316,11 @@ class ActiveLearningPipeline:
         def get_reward(pred_probs, real, epsilon=1e-3):
             return -math.log(pred_probs[real] + epsilon)
 
-        mab = UCB(7)
+        mab = UCB(9)
 
         sampling_method = [self._random_sampling, self._uncertainty_sampling, self._diversity_sampling,
                            self._density_weighted_uncertainty_sampling, self._margin_sampling, self.risk_based_sampling,
-                           self.qbc_sampling]
+                           self.qbc_sampling, self.metropolis_hastings_sampling, self.thompson_sampling]
         sm_rankings = {sm.__name__: list(sm(predicted_probabilities)) for sm in sampling_method}
         chosen_samples = set()
 
@@ -343,6 +389,10 @@ class ActiveLearningPipeline:
                 add_to_train_indices = self.risk_based_sampling(y_pred)
             elif selection_criterion == 'QBC':
                 add_to_train_indices = self.qbc_sampling(y_pred)
+            elif selection_criterion == 'metropolis_hastings':
+                add_to_train_indices = self.metropolis_hastings_sampling(y_pred)
+            elif selection_criterion == 'thompson':
+                add_to_train_indices = self.thompson_sampling(y_pred)
             elif selection_criterion == 'MAB':
                 add_to_train_indices = self.MAB_pipeline(mab, y_pred)
             else:
@@ -371,7 +421,7 @@ if __name__ == '__main__':
 
     # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
     #                            'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
-    sampling_methods_to_try = ['MAB', 'QBC', 'risk_based', 'random', 'uncertainty']
+    sampling_methods_to_try = ['MAB', 'thompson', 'QBC', 'risk_based', 'random']
 
     methods_performance = {}
     for sm in sampling_methods_to_try:
