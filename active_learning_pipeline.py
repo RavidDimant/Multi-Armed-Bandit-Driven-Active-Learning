@@ -10,6 +10,7 @@ from matplotlib import pyplot as plt
 from sklearn.utils import shuffle
 import random
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import pairwise_distances
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 
@@ -127,16 +128,23 @@ class ActiveLearningPipeline:
         return selected_indices
 
     def _diversity_sampling(self, _):
+        # Randomly select a subset of the data to limit memory usage
+        subset_size = 5000
+        if len(self.copy_data['unlabeled_data']['x']) > subset_size:
+            indices = np.random.choice(len(self.copy_data['unlabeled_data']['x']), subset_size, replace=False)
+            sampled_data = [self.copy_data['unlabeled_data']['x'][i] for i in indices]
+        else:
+            sampled_data = self.copy_data['unlabeled_data']['x']
+
         # Calculate pairwise distances between samples
-        from sklearn.metrics import pairwise_distances
-        distance_matrix = pairwise_distances(self.copy_data['unlabeled_data']['x'])
+        distance_matrix = pairwise_distances(np.array(sampled_data, dtype=np.float32))
 
         # Greedily select samples to maximize diversity
         selected_indices = []
         while len(selected_indices) < self.budget_per_iter:
             if not selected_indices:
                 # Start with a random sample
-                selected_indices.append(np.random.choice(range(len(self.copy_data['unlabeled_data']['x']))))
+                selected_indices.append(np.random.choice(range(subset_size)))
             else:
                 # Calculate the minimum distance of each sample to already selected ones
                 min_distances = np.min(distance_matrix[:, selected_indices], axis=1)
@@ -148,8 +156,15 @@ class ActiveLearningPipeline:
     def _density_weighted_uncertainty_sampling(self, predicted_probabilities):
         uncertainties = entropy(predicted_probabilities.T)
         # Calculate sample density in the feature space
-        from sklearn.metrics import pairwise_distances
-        distances = pairwise_distances(self.copy_data['unlabeled_data']['x'])
+        subset_size = 5000
+        if len(self.copy_data['unlabeled_data']['x']) > subset_size:
+            indices = np.random.choice(len(self.copy_data['unlabeled_data']['x']), subset_size, replace=False)
+            sampled_data = [self.copy_data['unlabeled_data']['x'][i] for i in indices]
+            sampled_predicted_probabilities = self.model.predict_proba(sampled_data)
+            uncertainties = entropy(sampled_predicted_probabilities.T)
+        else:
+            sampled_data = self.copy_data['unlabeled_data']['x']
+        distances = pairwise_distances(np.array(sampled_data, dtype=np.float32))
         densities = np.sum(np.exp(-distances), axis=1)  # Higher density for closer points
 
         # Combine uncertainty and density
@@ -421,7 +436,7 @@ if __name__ == '__main__':
     feature_of_interest = 'Diabetes'
 
     al = ActiveLearningPipeline(feature_of_interest, iterations=10, budget_per_iter=400, data_path=r"converted_data.csv",
-                                train_label_test_split=(0.03, 0.06, 0.01))
+                                train_label_test_split=(0.3, 0.6, 0.1))
 
     # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
     #                            'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
