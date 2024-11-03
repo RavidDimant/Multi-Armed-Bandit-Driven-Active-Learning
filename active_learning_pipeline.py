@@ -471,7 +471,8 @@ if __name__ == '__main__':
 
     feature_of_interest = 'Diabetes'
 
-    al = ActiveLearningPipeline(feature_of_interest, iterations=10, budget_per_iter=400, data_path=r"converted_data.csv",
+    al = ActiveLearningPipeline(feature_of_interest, iterations=10, budget_per_iter=400,
+                                data_path=r"converted_diabetes_data.csv",
                                 train_label_test_split=(0.3, 0.6, 0.1))
 
     # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
