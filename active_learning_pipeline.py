@@ -7,29 +7,117 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from scipy.stats import entropy
 from matplotlib import pyplot as plt
+import seaborn as sns
 from sklearn.utils import shuffle
 import random
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.metrics import pairwise_distances
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.metrics import pairwise_distances
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
-plt.switch_backend('TkAgg')
 
 
-def generate_plot(accuracy_scores_dict):
+def generate_plot(accuracy_scores_dict, title=''):
     """
-    Generate a plot for the accuracy scores
+    Generate a plot with specified figure size
     """
+    plt.figure(figsize=(15, 9))  # Adjust width and height as desired
     for criterion, accuracy_scores in accuracy_scores_dict.items():
         plt.plot(range(1, len(accuracy_scores) + 1), accuracy_scores, label=criterion)
-
     plt.xlabel('Iterations')
     plt.ylabel('Accuracy')
-    plt.title('Accuracy Scores for Different Criteria')
+    plt.title(title)
     plt.legend()
-    plt.grid(True)  # Optional: Adds gridlines to the plot
+    plt.show()
+
+
+def plot_all_datasets_results(results):
+    datasets = list(results.keys())  # List of dataset names
+    sampling_methods = list(next(iter(results.values())).keys())  # List of sampling methods
+    num_datasets = len(datasets)
+    num_methods = len(sampling_methods)
+
+    # Width of a single bar
+    bar_width = 0.075
+    # Generate an array of indices for the datasets
+    x = np.arange(num_datasets)
+
+    # Set up the plot
+    fig, ax = plt.subplots(figsize=(15, 9))
+
+    # Plot each sampling method as a separate group of bars
+    for i, method in enumerate(sampling_methods):
+        # Get scores for this method across datasets
+        scores = [results[dataset][method] for dataset in datasets]
+        # Position bars with an offset for each sampling method
+        ax.bar(x + i * bar_width, scores, width=bar_width, label=method)
+
+    # Adding labels and title
+    ax.set_xlabel('Dataset')
+    ax.set_ylabel('Score')
+    ax.set_ylim(bottom=0.5)
+    ax.set_title('Sampling Method Results Across Datasets')
+    ax.set_xticks(x + bar_width * (num_methods - 1) / 2)
+    ax.set_xticklabels(datasets)
+    ax.legend(title='Sampling Method')
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()  # Adjust layout for readability
+    plt.show()
+
+
+def plot_bars_for_datasets(data_dict):
+    # Loop through each dataset in the dictionary
+    for dataset_name, dataset in data_dict.items():
+        # Create a figure and axis for each dataset
+        plt.figure(figsize=(10, 6))
+        # Define the y-axis range (average ± 1)
+        avg_value = np.mean(list(dataset.values()))
+        plt.axhline(y=avg_value, color='red', linestyle='--', label=f'Average: {avg_value:.2f}')
+        y_min = avg_value - 0.05
+        y_max = avg_value + 0.05
+        plt.ylim(y_min, y_max)
+
+        # Plot the data as a bar chart
+        categories = list(dataset.keys())
+        values = list(dataset.values())
+        plt.bar(categories, values, color='orange')
+
+        # Add titles and labels
+        plt.title(f'Bar Chart for {dataset_name} dataset')
+        plt.xlabel('Categories')
+        plt.ylabel('Values')
+        plt.xticks(rotation=45, ha='right')
+        # Display the plot
+        plt.tight_layout()
+        plt.show()
+
+
+def plot_bars_for_methods(data_dict):
+    # Prepare data for plotting by converting the dictionary to a flat list of records
+    data = []
+    for dataset_name, methods in data_dict.items():
+        for method_name, score in methods.items():
+            data.append({'Method': method_name, 'Dataset': dataset_name, 'Score': score})
+
+    # Create a DataFrame from the data
+    df = pd.DataFrame(data)
+
+    # Set up the Seaborn plot
+    plt.figure(figsize=(10, 6))
+    sns.set_palette("Set2")  # You can adjust the color palette
+
+    # Create the horizontal barplot with sub-bars for each method and dataset
+    ax = sns.barplot(x='Score', y='Method', hue='Dataset', data=df, dodge=True, errorbar=None)
+
+    # Add labels and title
+    plt.title('Scores of Sampling Methods across Datasets')
+    plt.xlabel('Score')
+    plt.ylabel('Sampling Method')
+
+    # Display the plot
+    plt.tight_layout()
     plt.show()
 
 
@@ -59,18 +147,26 @@ class ActiveLearningPipeline:
 
         self.model = None
         self.iterations = iterations
-        self.budget_per_iter = budget_per_iter
         self.feature_of_interest = feature_of_interest
 
         # read and prepare train data, data to label and test data
         data_df = pd.read_csv(data_path)
         data_df = shuffle(data_df, random_state=42)
+        data_df = data_df.sample(frac=1).reset_index(drop=True)  # shuffle the df
+        data_df = data_df.iloc[:5000]  ##########
         self.data_df = data_df
+        self.label_size = len(set(list(data_df[feature_of_interest])))
+
         # Convert train_label_test_split from percentages to row indices
         total_rows = len(data_df)
         train_size = int(total_rows * train_label_test_split[0])
         label_size = int(total_rows * train_label_test_split[1])
         test_size = int(total_rows * train_label_test_split[2])
+        if budget_per_iter == -1:
+            self.budget_per_iter = int((label_size / self.iterations))
+        else:
+            self.budget_per_iter = budget_per_iter
+
         # Split data into train, label, and test sets
         labeled_df = data_df.iloc[:train_size]
         unlabeled_df = data_df.iloc[train_size:train_size + label_size]
@@ -105,7 +201,7 @@ class ActiveLearningPipeline:
 
         return labeled_data_x, labeled_data_y, unlabeled_data_x, unlabeled_data_y, test_data_x, test_data_y
 
-    " Sampling Methods "
+    " Known Sampling Methods "
 
     def _random_sampling(self, predicted_probabilities):
         pool_size = len(predicted_probabilities)
@@ -126,8 +222,9 @@ class ActiveLearningPipeline:
         return selected_indices
 
     def _diversity_sampling(self, _):
-        # Randomly select a subset of the data to limit memory usage
-        subset_size = 5000
+        # Select a subset of the data to limit memory usage
+        subset_size = min(len(self.copy_data['unlabeled_data']['x']), 5000)
+
         if len(self.copy_data['unlabeled_data']['x']) > subset_size:
             indices = np.random.choice(len(self.copy_data['unlabeled_data']['x']), subset_size, replace=False)
             sampled_data = [self.copy_data['unlabeled_data']['x'][i] for i in indices]
@@ -154,7 +251,8 @@ class ActiveLearningPipeline:
     def _density_weighted_uncertainty_sampling(self, predicted_probabilities):
         uncertainties = entropy(predicted_probabilities.T)
         # Calculate sample density in the feature space
-        subset_size = 5000
+        subset_size = min(len(self.copy_data['unlabeled_data']['x']), 5000)
+
         if len(self.copy_data['unlabeled_data']['x']) > subset_size:
             indices = np.random.choice(len(self.copy_data['unlabeled_data']['x']), subset_size, replace=False)
             sampled_data = [self.copy_data['unlabeled_data']['x'][i] for i in indices]
@@ -214,7 +312,7 @@ class ActiveLearningPipeline:
                 predictions[i] = member.predict(X_unlabeled)
             # Tally the votes - for each label, count how many models classifed each sample as that label
             vote_counts = np.apply_along_axis(
-                lambda x: np.bincount(x.astype(int), minlength=2),
+                lambda x: np.bincount(x.astype(int), minlength=self.label_size),
                 axis=0,
                 arr=predictions,
             )
@@ -235,52 +333,9 @@ class ActiveLearningPipeline:
         disagreements = qbc_disagreement(models, X_unlabeled)
         # Select the samples with the highest disagreement
         selected_indices = np.argsort(disagreements)[-n_select_per_iteration:]
-        return selected_indices
-
-    """
-    def risk_based_sampling(self, y_pred):
-        # Calculate uncertainty (entropy)
-        uncertainties = entropy(y_pred.T)
-
-        # Extract important feature columns (BMI, Smoking, Heart Disease...)
-        features_list = list(self.features)
-        bmi_index = features_list.index('BMI')
-        elderly_age1_index = features_list.index('Age_Category_80+')
-        elderly_age2_index = features_list.index('Age_Category_75-79')
-        elderly_age3_index = features_list.index('Age_Category_70-74')
-        heart_disease_index = features_list.index('Heart_Disease')
-        smoking_history_index = features_list.index('Smoking_History')
-        health_condition1_index = features_list.index('General_Health_Excellent')
-        health_condition2_index = features_list.index('General_Health_Fair')
-        health_condition3_index = features_list.index('General_Health_Good')
-        health_condition4_index = features_list.index('General_Health_Poor')
-        health_condition5_index = features_list.index('General_Health_Very Good')
-        arthritis_index = features_list.index('Arthritis')
-        exercise_index = features_list.index('Exercise')
-        sex_index = features_list.index('Sex')
-        skin_cancer_index = features_list.index('Skin_Cancer')
-
-        # Compute risk score: higher BMI, older age, presence of heart disease or smoking history increase risk
-        unlabeled_x = np.array(self.copy_data['unlabeled_data']['x'])
-        bmi_normalized = (unlabeled_x[:, bmi_index] - 15) / (40 - 15)  # Rescale BMI to 0-1 range
-        risk_scores = (bmi_normalized * 0.3 +  # Weight BMI more
-                       (unlabeled_x[:, elderly_age1_index] +  # Age contributes as well
-                        unlabeled_x[:, elderly_age2_index] +
-                        unlabeled_x[:, elderly_age3_index]) * 0.1 +
-                       unlabeled_x[:, heart_disease_index] * 0.3 +  # Heart Disease
-                       unlabeled_x[:, smoking_history_index] * 0.1 +  # Smoking History
-                       (unlabeled_x[:, health_condition1_index] +
-                        unlabeled_x[:, health_condition2_index] +
-                        unlabeled_x[:, health_condition3_index] +
-                        unlabeled_x[:, health_condition4_index] +
-                        unlabeled_x[:, health_condition5_index]) * 0.1 +
-                       unlabeled_x[:, arthritis_index] * 0.1)
-        # Combine uncertainty and risk score
-        combined_scores = (0.5 * uncertainties) + (0.5 * risk_scores)
-        # Select samples with the highest combined score
-        selected_indices = np.argsort(combined_scores)[-self.budget_per_iter:]
         return list(selected_indices)
-        """
+
+    " New Sampling Methods "
 
     def risk_based_sampling(self, y_pred):
         def get_top_correlated_features(top_n=10):
@@ -296,7 +351,7 @@ class ActiveLearningPipeline:
 
         uncertainties = entropy(y_pred.T)
         num_of_features = len(self.features)
-        correlated_features = get_top_correlated_features(top_n=int(0.3*num_of_features))
+        correlated_features = get_top_correlated_features(top_n=int(0.3 * num_of_features))
         feature_indices = [list(self.features).index(f) for f in correlated_features]
 
         unlabeled_x = np.array(self.copy_data['unlabeled_data']['x'])
@@ -307,10 +362,10 @@ class ActiveLearningPipeline:
         for i, feature_index in enumerate(feature_indices):
             # Rescale feature to 0-1 if it isn’t already
             feature_values = unlabeled_x[:, feature_index]
-            feature_min, feature_max = feature_values.min(), feature_values.max()
-            normalized_feature = (feature_values - feature_min) / (feature_max - feature_min)
+            # feature_min, feature_max = feature_values.min(), feature_values.max()
+            # normalized_feature = (feature_values - feature_min) / (feature_max - feature_min)
             # Update risk scores with weighted normalized values
-            risk_scores += normalized_feature * weights[correlated_features[i]]
+            risk_scores += feature_values * weights[correlated_features[i]]
 
         # Combine uncertainty and risk score
         combined_scores = (0.5 * uncertainties) + (0.5 * risk_scores)
@@ -369,10 +424,11 @@ class ActiveLearningPipeline:
 
     def MAB_pipeline(self, mab, predicted_probabilities):
 
-        def get_reward(pred_probs, real, epsilon=1e-3):
+        # mab = UCB(len(self.sampling_methods))
+        def get_reward(pred_probs, real, epsilon=1e-6):
             return -math.log(pred_probs[real] + epsilon)
 
-        sm_rankings = {sm.__name__: list(sm(predicted_probabilities)) for sm in self.sampling_methods}
+        sm_rankings = {sm.__name__: sm(predicted_probabilities) for sm in self.sampling_methods}
         chosen_samples = set()
 
         # 1 - initial step - choose each arm once
@@ -385,10 +441,14 @@ class ActiveLearningPipeline:
         # 2 - start exploration/exploitation
         while len(chosen_samples) != self.budget_per_iter:
             chosen_arm = mab.choose_arm()
+
+            if len(sm_rankings[self.sampling_methods[chosen_arm].__name__]) == 0:
+                break
+
             chosen_sample_ind = sm_rankings[self.sampling_methods[chosen_arm].__name__].pop(0)
             chosen_samples.add(chosen_sample_ind)
-            reward = get_reward(predicted_probabilities[chosen_sample_ind],
-                                self.data['unlabeled_data']['y'][chosen_sample_ind])
+            reward = get_reward(predicted_probabilities[chosen_sample_ind], self.data['unlabeled_data']['y']
+            [chosen_sample_ind])
             mab.update(chosen_arm, reward)
 
         return list(chosen_samples)
@@ -398,20 +458,16 @@ class ActiveLearningPipeline:
     def run_pipeline(self, selection_criterion):
         """ Run the active learning pipeline """
 
-        # labeled_data_x, labeled_data_y, unlabeled_data_x, unlabeled_data_y, test_data_x, test_data_y = \
-        #     self.get_data_copy()
-
         self.copy_data = copy.deepcopy(self.data)
 
         self.sampling_methods = [self._random_sampling, self._uncertainty_sampling, self._diversity_sampling,
-                                 self._density_weighted_uncertainty_sampling, self._margin_sampling,
-                                 self.risk_based_sampling,self.qbc_sampling, self.metropolis_hastings_sampling,
-                                 self.thompson_sampling]
+                                 self._density_weighted_uncertainty_sampling, self._margin_sampling, self.qbc_sampling,
+                                 self.risk_based_sampling, self.metropolis_hastings_sampling, self.thompson_sampling]
+
         mab = UCB(len(self.sampling_methods))
 
         accuracy_scores = []
         for iteration in range(self.iterations):
-            print(iteration)
 
             if len(self.copy_data['unlabeled_data']['y']) < self.budget_per_iter:
                 break
@@ -437,16 +493,16 @@ class ActiveLearningPipeline:
                 add_to_train_indices = self._density_weighted_uncertainty_sampling(y_pred)
             elif selection_criterion == 'margin':
                 add_to_train_indices = self._margin_sampling(y_pred)
-            elif selection_criterion == 'risk_based':
-                add_to_train_indices = self.risk_based_sampling(y_pred)
             elif selection_criterion == 'QBC':
                 add_to_train_indices = self.qbc_sampling(y_pred)
+            elif selection_criterion == 'MAB':
+                add_to_train_indices = self.MAB_pipeline(mab, y_pred)
+            elif selection_criterion == 'risk_based':
+                add_to_train_indices = self.risk_based_sampling(y_pred)
             elif selection_criterion == 'metropolis_hastings':
                 add_to_train_indices = self.metropolis_hastings_sampling(y_pred)
             elif selection_criterion == 'thompson':
                 add_to_train_indices = self.thompson_sampling(y_pred)
-            elif selection_criterion == 'MAB':
-                add_to_train_indices = self.MAB_pipeline(mab, y_pred)
             else:
                 raise RuntimeError("unknown method")
 
@@ -468,20 +524,37 @@ class ActiveLearningPipeline:
 
 if __name__ == '__main__':
 
-    feature_of_interest = 'Diabetes'
+    datasets_names = ['car', 'diabetes', 'wine']  # , 'glass'
+    label_per_data = ['unacc', 'Diabetes', 'quality']  # , 'Type'
 
-    al = ActiveLearningPipeline(feature_of_interest, iterations=10, budget_per_iter=400,
-                                data_path=r"converted_diabetes_data.csv",
-                                train_label_test_split=(0.3, 0.6, 0.1))
+    sampling_methods_to_try = ['random', 'uncertainty', 'diversity', 'density_weighted_uncertainty', 'margin', 'QBC',
+                               'risk_based', 'metropolis_hastings', 'thompson', 'MAB']
 
-    # sampling_methods_to_try = ['diversity', 'density_weighted_uncertainty',
-    #                            'margin', 'risk_based', 'random', 'uncertainty', 'MAB']
-    sampling_methods_to_try = ['risk_based', 'MAB', 'thompson', 'QBC', 'random']
+    dataset_performances = {dn: {sm: 0 for sm in sampling_methods_to_try} for dn in datasets_names}
+    complete_history = {dn: [] for dn in datasets_names}
 
-    methods_performance = {}
-    for sm in sampling_methods_to_try:
-        print("=" * 10, sm, "=" * 10)
-        sm_result = al.run_pipeline(selection_criterion=sm)
-        methods_performance[sm] = sm_result
+    for data_name, label in zip(datasets_names, label_per_data):
+        print(f"Evaluating method on the {data_name} dataset.")
 
-    generate_plot(methods_performance)
+        cur_path = f"data/converted_{data_name}_data.csv"
+
+        al = ActiveLearningPipeline(iterations=10, budget_per_iter=-1, data_path=cur_path,
+                                    train_label_test_split=(0.1, 0.8, 0.1), feature_of_interest=label)
+
+        methods_performance = {}
+        for sm in sampling_methods_to_try:
+            print("=" * 10, sm, "=" * 10)
+            sm_result = al.run_pipeline(selection_criterion=sm)
+            methods_performance[sm] = sm_result
+
+        for sm in sampling_methods_to_try:
+            dataset_performances[data_name][sm] = np.mean(methods_performance[sm])  # mean over all iterations
+            # dataset_performances[data_name][sm] = methods_performance[sm][-1]  # only final iteration result
+
+        generate_plot(methods_performance, title=data_name.upper() + " DATASET")
+        complete_history[data_name] = methods_performance
+
+    plot_all_datasets_results(dataset_performances)
+    plot_bars_for_datasets(dataset_performances)
+    plot_bars_for_methods(dataset_performances)
+    print(dataset_performances)
