@@ -13,8 +13,10 @@ import random
 from sklearn.metrics.pairwise import cosine_similarity
 import warnings
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.metrics import pairwise_distances
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
+# plt.switch_backend('TkAgg')
 
 
 def generate_plot(accuracy_scores_dict, title=''):
@@ -167,9 +169,8 @@ class ActiveLearningPipeline:
 
         return selected_indices
 
-    def _diversity_sampling(self, _):
+    def old_diversity_sampling(self, _):
         # Calculate pairwise distances between samples
-        from sklearn.metrics import pairwise_distances
         distance_matrix = pairwise_distances(self.copy_data['unlabeled_data']['x'])
 
         # Greedily select samples to maximize diversity
@@ -186,11 +187,56 @@ class ActiveLearningPipeline:
                 selected_indices.append(next_index)
         return selected_indices
 
-    def _density_weighted_uncertainty_sampling(self, predicted_probabilities):
+    def _diversity_sampling(self, _):
+        # Randomly select a subset of the data to limit memory usage
+        subset_size = 5000
+        if len(self.copy_data['unlabeled_data']['x']) > subset_size:
+            indices = np.random.choice(len(self.copy_data['unlabeled_data']['x']), subset_size, replace=False)
+            sampled_data = [self.copy_data['unlabeled_data']['x'][i] for i in indices]
+        else:
+            sampled_data = self.copy_data['unlabeled_data']['x']
+
+        # Calculate pairwise distances between samples
+        distance_matrix = pairwise_distances(np.array(sampled_data, dtype=np.float32))
+
+        # Greedily select samples to maximize diversity
+        selected_indices = []
+        while len(selected_indices) < self.budget_per_iter:
+            if not selected_indices:
+                # Start with a random sample
+                selected_indices.append(np.random.choice(range(subset_size)))
+            else:
+                # Calculate the minimum distance of each sample to already selected ones
+                min_distances = np.min(distance_matrix[:, selected_indices], axis=1)
+                # Select the sample with the maximum minimum distance
+                next_index = np.argmax(min_distances)
+                selected_indices.append(next_index)
+        return selected_indices
+
+    def old_density_weighted_uncertainty_sampling(self, predicted_probabilities):
         uncertainties = entropy(predicted_probabilities.T)
         # Calculate sample density in the feature space
         from sklearn.metrics import pairwise_distances
         distances = pairwise_distances(self.copy_data['unlabeled_data']['x'])
+        densities = np.sum(np.exp(-distances), axis=1)  # Higher density for closer points
+
+        # Combine uncertainty and density
+        combined_scores = uncertainties * densities
+        selected_indices = list(np.argsort(combined_scores)[-self.budget_per_iter:])
+        return selected_indices
+
+    def _density_weighted_uncertainty_sampling(self, predicted_probabilities):
+        uncertainties = entropy(predicted_probabilities.T)
+        # Calculate sample density in the feature space
+        subset_size = 5000
+        if len(self.copy_data['unlabeled_data']['x']) > subset_size:
+            indices = np.random.choice(len(self.copy_data['unlabeled_data']['x']), subset_size, replace=False)
+            sampled_data = [self.copy_data['unlabeled_data']['x'][i] for i in indices]
+            sampled_predicted_probabilities = self.model.predict_proba(sampled_data)
+            uncertainties = entropy(sampled_predicted_probabilities.T)
+        else:
+            sampled_data = self.copy_data['unlabeled_data']['x']
+        distances = pairwise_distances(np.array(sampled_data, dtype=np.float32))
         densities = np.sum(np.exp(-distances), axis=1)  # Higher density for closer points
 
         # Combine uncertainty and density
@@ -206,7 +252,7 @@ class ActiveLearningPipeline:
         selected_indices = list(np.argsort(margins)[:self.budget_per_iter])
         return selected_indices
 
-    def qbc_sampling(self, _):
+    def old_qbc_sampling(self, _):
         def train_committee(X, y, n_models):
             """
             Receives a dataset X and labels Y, sub-samples from them and trains `n_models` different logistic regression models.
@@ -265,6 +311,148 @@ class ActiveLearningPipeline:
         # Select the samples with the highest disagreement
         selected_indices = np.argsort(disagreements)[-n_select_per_iteration:]
         return list(selected_indices)
+
+    def qbc_sampling(self, _):
+        def train_committee(X, y, n_models):
+            """
+            Receives a dataset X and labels Y, sub-samples from them and trains `n_models` different logistic regression models.
+            """
+            # Create a list for the committe of models
+            models = []
+            total_samples = X.shape[0]
+            for _ in range(n_models):
+                # Create a model
+                model = LogisticRegression(max_iter=200)
+
+                # Sample self.budget_per_iter of the dataset
+                sampled_indices = np.random.choice(total_samples, size=self.budget_per_iter, replace=False)
+                X_sampled = X[sampled_indices]
+                Y_sampled = y[sampled_indices]
+
+                # Train the model
+                model.fit(X_sampled, Y_sampled)
+
+                # Save the trained model
+                models.append(model)
+            return models
+
+        def qbc_disagreement(models, X_unlabeled):
+            """
+            Recieves a list of models and unlabeled data and via Query-By-Committee returns the entropy for all the predictions
+            """
+            n_models = len(models)
+            # Create a variable to store the predictions of the committee
+            predictions = np.zeros((n_models, X_unlabeled.shape[0]))
+            # Get the predicted label from each model in the committe
+            for i, member in enumerate(models):
+                predictions[i] = member.predict(X_unlabeled)
+            # Tally the votes - for each label, count how many models classifed each sample as that label
+            vote_counts = np.apply_along_axis(
+                lambda x: np.bincount(x.astype(int), minlength=2),
+                axis=0,
+                arr=predictions,
+            )
+            # Calculate the vote entropy as seen in the QBC formula
+            vote_entropy = -np.sum((vote_counts / n_models) * np.log(vote_counts / n_models + 1e-10), axis=0)
+            return vote_entropy
+
+        n_select_per_iteration = self.budget_per_iter
+        n_models = 7
+
+        X_labeled = np.array(self.copy_data['labeled_data']['x'])
+        y_labeled = np.array(self.copy_data['labeled_data']['y'])
+        X_unlabeled = np.array(self.copy_data['unlabeled_data']['x'])
+
+        # Train the committee of models
+        models = train_committee(X_labeled, y_labeled, n_models)
+        # Calculate disagreement
+        disagreements = qbc_disagreement(models, X_unlabeled)
+        # Select the samples with the highest disagreement
+        selected_indices = np.argsort(disagreements)[-n_select_per_iteration:]
+        return selected_indices
+
+    def risk_based_sampling(self, y_pred):
+        def get_top_correlated_features(top_n=10):
+            # Compute correlations with feature_of_interest
+            correlations = self.data_df.corr()[self.feature_of_interest].abs().sort_values(ascending=False)
+            return np.array(correlations.index[1:top_n + 1])  # exclude feature_of_interest itself
+
+        def assign_feature_weights(correlated_features):
+            # Define a weight dictionary, modify as needed for different datasets
+            weights = {feature: 1 / len(correlated_features) for feature in
+                       correlated_features}  # Equal weight for simplicity
+            return weights
+
+        uncertainties = entropy(y_pred.T)
+        num_of_features = len(self.features)
+        correlated_features = get_top_correlated_features(top_n=int(0.3*num_of_features))
+        feature_indices = [list(self.features).index(f) for f in correlated_features]
+
+        unlabeled_x = np.array(self.copy_data['unlabeled_data']['x'])
+        risk_scores = np.zeros(len(unlabeled_x))
+        # weights based on feature correlations or importance
+        weights = assign_feature_weights(correlated_features)  # Assumes a dictionary with feature weights
+
+        for i, feature_index in enumerate(feature_indices):
+            # Rescale feature to 0-1 if it isn’t already
+            feature_values = unlabeled_x[:, feature_index]
+            feature_min, feature_max = feature_values.min(), feature_values.max()
+            normalized_feature = (feature_values - feature_min) / (feature_max - feature_min)
+            # Update risk scores with weighted normalized values
+            risk_scores += normalized_feature * weights[correlated_features[i]]
+
+        # Combine uncertainty and risk score
+        combined_scores = (0.5 * uncertainties) + (0.5 * risk_scores)
+        # Select samples with the highest combined score
+        selected_indices = np.argsort(combined_scores)[-self.budget_per_iter:]
+        return list(selected_indices)
+
+    def metropolis_hastings_sampling(self, predicted_probabilities):
+        if len(predicted_probabilities.shape) > 1:
+            predicted_probabilities = np.max(predicted_probabilities, axis=1)
+        proposal_std = 0.1
+        num_data = len(predicted_probabilities)
+        selected_indices = []
+        # Start with a random initial index
+        current_index = np.random.randint(0, num_data)
+        selected_indices.append(current_index)
+        while len(selected_indices) < self.budget_per_iter:
+            # Propose a new index by adding Gaussian noise to the current index
+            proposed_index = int(current_index + np.random.normal(0, proposal_std) * num_data)
+            proposed_index = np.clip(proposed_index, 0, num_data - 1)
+
+            # Acceptance criterion: higher probabilities are preferred
+            acceptance_ratio = min(
+                1,
+                predicted_probabilities[proposed_index] / predicted_probabilities[current_index]
+            )
+            # Accept or reject the proposal
+            if np.random.rand() < acceptance_ratio:
+                selected_indices.append(proposed_index)
+                current_index = proposed_index
+        return list(set(selected_indices))
+
+    def thompson_sampling(self, predicted_probabilities):
+        y_true = self.copy_data['unlabeled_data']['y']
+        num_data = len(predicted_probabilities)
+        selected_indices = []
+
+        # Initialize success/failure counts for each sample
+        successes = np.ones(num_data)  # Start with prior of 1 success
+        failures = np.ones(num_data)  # Start with prior of 1 failure
+
+        for _ in range(self.budget_per_iter):
+            # Draw a sample for each index from the Beta distribution
+            samples = np.random.beta(successes + 1, failures + 1)
+            # Select the index with the highest sampled probability
+            chosen_index = np.argmax(samples)
+            selected_indices.append(chosen_index)
+            # Update success/failure counts based on actual reward
+            if y_true[chosen_index] == 1:
+                successes[chosen_index] += 1
+            else:
+                failures[chosen_index] += 1
+        return list(set(selected_indices))
 
     " Multi armed bandit pipline "
 
@@ -339,6 +527,12 @@ class ActiveLearningPipeline:
                 add_to_train_indices = self.qbc_sampling(y_pred)
             elif selection_criterion == 'MAB':
                 add_to_train_indices = self.MAB_pipeline(mab, y_pred)
+            elif selection_criterion == 'risk_based':
+                add_to_train_indices = self.risk_based_sampling(y_pred)
+            elif selection_criterion == 'metropolis_hastings':
+                add_to_train_indices = self.metropolis_hastings_sampling(y_pred)
+            elif selection_criterion == 'thompson':
+                add_to_train_indices = self.thompson_sampling(y_pred)
             else:
                 raise RuntimeError("unknown method")
 
@@ -375,7 +569,7 @@ if __name__ == '__main__':
     for data_name, label in zip(datasets_names, label_per_data):
         print(f"Evaluating method on the {data_name} dataset.")
 
-        cur_path = f"data/converted_{data_name}_data.csv"
+        cur_path = f"latest_version/data/converted_{data_name}_data.csv"
 
         al = ActiveLearningPipeline(iterations=10, budget_per_iter=-1, data_path=cur_path,
                                train_label_test_split=(0.1, 0.8, 0.1), feature_of_interest=label)

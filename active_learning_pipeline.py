@@ -174,7 +174,6 @@ class ActiveLearningPipeline:
         # Calculate the margin between the top two probabilities
         sorted_probs = np.sort(predicted_probabilities, axis=1)
         margins = sorted_probs[:, -1] - sorted_probs[:, -2]
-
         # Select samples with the smallest margins (closest to the decision boundary)
         selected_indices = list(np.argsort(margins)[:self.budget_per_iter])
         return selected_indices
