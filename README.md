@@ -16,7 +16,6 @@ Unlike traditional approaches, our **MAB-based pipeline** adapts dynamically, ch
 - [📝 Usage](#-usage)
 - [✨ Features](#-features)
 - [📂 Files](#-files)
-- [🤝 Contributing](#-contributing)
 - [📜 License](#-license)
 
 ---
@@ -90,27 +89,6 @@ You can generate plots using functions like `generate_plot()` and `plot_all_data
   - **CVD_dataset.csv**: Original cardiovascular dataset.
   - **glass.csv**: Original glass dataset.
   - **winequality-red.csv**: Original red wine quality dataset.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! 🎉 To contribute:
-
-1. **Fork** the repository.
-2. **Create a new branch** for your feature or bugfix:
-   ```bash
-   git checkout -b feature/YourFeatureName
-   ```
-3. **Commit your changes**:
-   ```bash
-   git commit -m "Add some feature"
-   ```
-4. **Push to the branch**:
-   ```bash
-   git push origin feature/YourFeatureName
-   ```
-5. **Create a pull request**.
 
 ---
 
