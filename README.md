@@ -1,7 +1,7 @@
 # Active Learning Project
 
 ## Description
-The **Active Learning Project** aims to explore and evaluate multiple active learning strategies to enhance the training process of machine learning models. By selecting the most informative data points to be labeled, the project seeks to improve model performance while minimizing the labeling budget. This repository provides an implementation of different active learning techniques using a Python pipeline, including Random Sampling, Uncertainty Sampling, and other innovative approaches.
+The **Active Learning Project** aims to explore and evaluate multiple active learning strategies, with a unique emphasis on the Multi-Armed Bandit (MAB) method, to enhance the training process of machine learning models. By selecting the most informative data points to be labeled, the project seeks to improve model performance while minimizing the labeling budget. Unlike traditional approaches, our MAB-based pipeline adapts dynamically, choosing the best sampling strategy at each iteration based on previous successes. This adaptive selection not only optimizes labeling efficiency but accelerates model learning by maximizing data impact per label. The repository provides an implementation of a variety of active learning techniques using a Python pipeline, including Random Sampling, Uncertainty Sampling, Diversity Sampling, and other innovative approaches that complement the MAB strategy.
 
 ## Table of Contents
 - [Description](#description)
