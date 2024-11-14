@@ -81,6 +81,15 @@ You can generate plots using functions like `generate_plot()` and `plot_all_data
 - **📜 active_learning_pipeline.py**: Implements the core active learning pipeline, offering multiple sampling methods and training strategies for different datasets.
 - **📊 visualizations.py**: Provides utility functions to generate plots comparing the effectiveness of different active learning methods.
 - **🗂 process_data.ipynb**: Jupyter notebook for data preprocessing, exploration, and preparation prior to running the main active learning pipeline.
+- **📁 Data/**: Folder containing the processed and cleaned datasets used in the project:
+  - **converted_car_data.csv**: Processed car evaluation dataset.
+  - **converted_diabetes_data.csv**: Cleaned diabetes dataset.
+  - **converted_glass_data.csv**: Processed glass dataset for classification.
+  - **converted_wine_data.csv**: Cleaned wine quality dataset.
+  - **car_evaluation.csv**: Original car evaluation dataset.
+  - **CVD_dataset.csv**: Original cardiovascular dataset.
+  - **glass.csv**: Original glass dataset.
+  - **winequality-red.csv**: Original red wine quality dataset.
 
 ---
 
