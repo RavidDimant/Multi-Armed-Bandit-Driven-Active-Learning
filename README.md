@@ -1,6 +1,8 @@
 # 🌟 Active Learning Project
 
 
+
+
 ## 🚀 Description
 The **Active Learning Project** aims to explore and evaluate multiple active learning strategies, with a unique emphasis on the **Multi-Armed Bandit (MAB) method**, to enhance the training process of machine learning models. By selecting the most informative data points to be labeled, the project seeks to improve model performance while minimizing the labeling budget.
 
