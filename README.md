@@ -16,7 +16,6 @@ Unlike traditional approaches, our **MAB-based pipeline** adapts dynamically, ch
 - [📝 Usage](#-usage)
 - [✨ Features](#-features)
 - [📂 Files](#-files)
-- [📜 License](#-license)
 
 ---
 
@@ -90,8 +89,3 @@ You can generate plots using functions like `generate_plot()` and `plot_all_data
   - **glass.csv**: Original glass dataset.
   - **winequality-red.csv**: Original red wine quality dataset.
 
----
-
-## 📜 License
-
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
