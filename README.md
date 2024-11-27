@@ -133,4 +133,6 @@ Overall, the results highlight the robustness of MAB-driven strategies, particul
 
  ![Image Alt](https://github.com/RavidDimant/Multi-Armed-Bandit-Driven-Active-Learning/blob/main/results/Last%20Iterations%20Result.png?raw=true)
 
+**Last Iterations Result** showcase the performance improvements of various sampling methods across multiple datasets in the final iteration of the active learning process. Adaptive methods like **LST-MAB** and **Vanilla MAB** consistently achieve top performance, particularly in datasets like **Apple**, **Hotel**, and **Shipping**, where their dynamic selection of strategies maximizes learning efficiency. Static methods, such as **Margin Sampling** and **Feature-Based Sampling**, demonstrate competitive results in specific datasets like **Loan** and **MB**, but lack the versatility of the MAB approaches. The chart also highlights that simpler methods, like **Random Sampling**, offer modest improvements but often fall behind more targeted strategies. This emphasizes the strength of adaptive frameworks like **MAB** in handling diverse data characteristics and achieving robust results across various datasets.
+
 ---
