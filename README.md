@@ -61,6 +61,7 @@ If you already have the results file (results_partial_labeling_4k_s=100.pkl) ava
    - Train a machine learning model (e.g., Random Forest or Logistic Regression).
    - Apply the selected active learning strategies.
    - Save the training results and predictions for later analysis.
+
 Note that the execution will take a lot time because we iterate over all datasets.
 
 ### Step 3: **Analyze Results**
