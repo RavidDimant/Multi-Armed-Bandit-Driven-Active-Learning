@@ -103,11 +103,8 @@ The `ActiveLearningPipeline` class provides several strategies for data sampling
 - Leverages **KL divergence** to compare short-term and long-term behaviors, ensuring a dynamic and context-aware sampling approach.
 - Excels in datasets with changing distributions or where the best strategy varies significantly over time, making it highly effective for diverse applications.
 
-### 4. 💡 Diverse Strategies
-- Offers a range of standard methods such as **Random Sampling**, **Uncertainty Sampling**, **Diversity Sampling**, **Density-Weighted Uncertainty Sampling**, **Margin Sampling**, **Query by Committee (QBC)**, and **Metropolis Hastings Sampling**.
-- Incorporates advanced adaptive pipelines like **Vanilla-MAB** and **Long Short-Term MAB (LST-MAB)** for sophisticated active learning tasks.
 
-### 5. 📊 Comprehensive Visualization
+### 4. 📊 Comprehensive Visualization
 - Provides detailed analysis tools for visualizing and comparing sampling strategies, including:
   - 📈 **Accuracy Plots**: Track accuracy trends across iterations.
   - 📊 **Comparison Charts**: Highlight the performance of different sampling strategies.
