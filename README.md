@@ -93,20 +93,28 @@ The `ActiveLearningPipeline` class provides several strategies for data sampling
 - ⚠️ **Feature-Based Sampling**: Weights features by correlation to label interest to enhance sampling efficiency in specific tasks.
 - 🎰 **Multi-Armed Bandit (MAB) Strategy**: Dynamically selects the best sampling method using bandit algorithms, optimizing for robust performance.
 
-### 2. 🌟 Adaptive Sampling
-- Dynamically adapts the sampling process using **MAB-based strategies**, ensuring consistent and effective performance across a variety of datasets. Balances exploration and exploitation to maximize learning impact per label.
+### 2. 🏹 Vanilla Multi-Armed Bandit (MAB)
+- Employs a **single bandit** to manage the sampling process across all iterations.
+- Uses Upper Confidence Bound (UCB) algorithms to balance exploration (trying lesser-used sampling methods) and exploitation (selecting the best-performing methods).
+- Demonstrates robust performance across datasets by dynamically adjusting to data characteristics and improving sampling efficiency over time.
 
-### 3. 💡 Diverse Strategies
+### 3. ⚡ Long Short-Term MAB (LST-MAB)
+- Extends the vanilla MAB with **short-term and long-term memory mechanisms**, allowing for adaptive switching between strategies based on recent and historical performance.
+- Leverages **KL divergence** to compare short-term and long-term behaviors, ensuring a dynamic and context-aware sampling approach.
+- Excels in datasets with changing distributions or where the best strategy varies significantly over time, making it highly effective for diverse applications.
+
+### 4. 💡 Diverse Strategies
 - Offers a range of standard methods such as **Random Sampling**, **Uncertainty Sampling**, **Diversity Sampling**, **Density-Weighted Uncertainty Sampling**, **Margin Sampling**, **Query by Committee (QBC)**, and **Metropolis Hastings Sampling**.
 - Incorporates advanced adaptive pipelines like **Vanilla-MAB** and **Long Short-Term MAB (LST-MAB)** for sophisticated active learning tasks.
 
-### 4. 📊 Comprehensive Visualization
+### 5. 📊 Comprehensive Visualization
 - Provides detailed analysis tools for visualizing and comparing sampling strategies, including:
   - 📈 **Accuracy Plots**: Track accuracy trends across iterations.
   - 📊 **Comparison Charts**: Highlight the performance of different sampling strategies.
   - 🗂 **Bar and Box Plots**: Display accuracy improvements and variability for in-depth analysis.
 
 These features make the project a versatile and powerful framework for evaluating and enhancing active learning processes across diverse datasets.
+
 ---
 
 ## 📂 Files
