@@ -37,6 +37,7 @@ Unlike traditional approaches, the MAB-based pipeline dynamically adapts at each
 ### Disclaimer:
 If you already have the results file (results_partial_labeling_4k_s=100.pkl) available, you can directly run results_analysis.ipynb without completing Steps 1 and 2. This file contains the pre-computed results, allowing you to skip data preprocessing and model training. If the file is unavailable, proceed with the conventional method outlined below.
 
+
 ### Step 1: **Prepare the Dataset**
 1. Open the `process_data.ipynb` Jupyter notebook.
 2. Load the raw datasets located in the `Data/` folder.
@@ -138,5 +139,11 @@ Overall, the results highlight the robustness of MAB-driven strategies, particul
  ![Image Alt](https://github.com/RavidDimant/Multi-Armed-Bandit-Driven-Active-Learning/blob/main/results/Last%20Iterations%20Result.png?raw=true)
 
 **Last Iterations Result** showcase the performance improvements of various sampling methods across multiple datasets in the final iteration of the active learning process. Adaptive methods like **LST-MAB** and **Vanilla MAB** consistently achieve top performance, particularly in datasets like **Apple**, **Hotel**, and **Shipping**, where their dynamic selection of strategies maximizes learning efficiency. Static methods, such as **Margin Sampling** and **Feature-Based Sampling**, demonstrate competitive results in specific datasets like **Loan** and **MB**, but lack the versatility of the MAB approaches. The chart also highlights that simpler methods, like **Random Sampling**, offer modest improvements but often fall behind more targeted strategies. This emphasizes the strength of adaptive frameworks like **MAB** in handling diverse data characteristics and achieving robust results across various datasets.
+
+---
+
+ ![Image Alt](https://github.com/RavidDimant/Multi-Armed-Bandit-Driven-Active-Learning/blob/main/results/Mean%20Iteration%20Results.png?raw=true)
+
+The **Mean Iteration Results** graph highlights the average performance of sampling methods across multiple iterations for different datasets. Adaptive approaches like **LST-MAB** and **Vanilla MAB** continue to dominate, showcasing their ability to maintain consistently high performance over time, particularly in datasets like **Hotel**, **Apple**, and **MB**. Static methods, such as **Margin Sampling** and **Feature-Based Sampling**, also perform well in specific datasets, such as **Loan** and **Shipping**, but show a drop in adaptability compared to MAB-based methods. Interestingly, **Uncertainty Sampling** and **Density-Weighted Uncertainty Sampling** provide competitive performance in moderately complex datasets, while simpler methods like **Random Sampling** achieve only marginal gains across most datasets. These findings reaffirm the importance of adaptive sampling strategies, especially in scenarios where consistent performance across iterations is critical.
 
 ---
