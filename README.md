@@ -15,7 +15,6 @@ Unlike traditional approaches, the MAB-based pipeline dynamically adapts at each
 - [✨ Features](#-features)
 - [📂 Files](#-files)
 - [📊 Results](#-results)
-- [📋 Project Overview](#-project-overview)
 
 ---
 
@@ -135,19 +134,3 @@ Overall, the results highlight the robustness of MAB-driven strategies, particul
  ![Image Alt](https://github.com/RavidDimant/Multi-Armed-Bandit-Driven-Active-Learning/blob/main/results/Last%20Iterations%20Result.png?raw=true)
 
 ---
-
-## 📋 Project Overview
-The **Active Learning Project** focuses on enhancing model efficiency through intelligent sampling. By utilizing Multi-Armed Bandit (MAB) algorithms, the project aims to dynamically adapt the sampling process, selecting the most informative data points for labeling. This approach reduces labeling costs while improving model performance across different datasets.
-
-### Setup Instructions
-1. Clone the repository and navigate to the project directory.
-3. Ensure you have the appropriate datasets in CSV format.
-
-### Running the Code
-To run the pipeline, execute the main script as follows:
-```bash
-python active_learning_pipeline.py
-```
-You can configure different parameters for datasets and sampling strategies directly within the script or through command line arguments.
-
-The results and visualizations can be generated using the **visualizations.py** script for a comprehensive understanding of the performance of various sampling methods.
