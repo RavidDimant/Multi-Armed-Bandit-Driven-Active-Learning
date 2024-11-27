@@ -103,6 +103,9 @@ The results of our experiments demonstrate the effectiveness of our MAB-driven s
 
 Overall, the results highlight the robustness of MAB-driven strategies, particularly LST-MAB, in selecting effective sampling methods across diverse datasets, often matching or surpassing individual static methods.
 
+
+![image](https://github.com/user-attachments/assets/eec4b4b5-d893-4221-8d2d-6f852007ebb7)
+
 ---
 
 ## 📋 Project Overview
