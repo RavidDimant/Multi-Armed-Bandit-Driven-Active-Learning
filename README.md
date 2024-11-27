@@ -74,24 +74,30 @@ By following these steps, you can effectively preprocess data, train models with
 ## ✨ Features
 
 ### 1. 🎯 Active Learning Strategies
-The **ActiveLearningPipeline** class provides several strategies for data sampling:
+
+The `ActiveLearningPipeline` class provides several strategies for data sampling:
 
 - 🔄 **Random Sampling**: Randomly selects samples without any specific heuristic.
 - ❓ **Uncertainty Sampling**: Selects samples the model is least certain about to maximize learning efficiency.
 - 🌍 **Diversity Sampling**: Selects diverse samples based on pairwise distance to ensure varied data.
-- 📈 **Density-Weighted Uncertainty Sampling**: A combination of density-based selection and uncertainty.
-- 🤖 **Query by Committee (QBC)**: Uses multiple models to select samples with the highest disagreement.
-- ⚠️ **Risk-Based Sampling**: Weights features by correlation to label interest to enhance sampling efficiency.
-- 🎰 **Multi-Armed Bandit (MAB) Strategy**: Uses a multi-armed bandit approach to dynamically select the best sampling method.
+- 📈 **Density-Weighted Uncertainty Sampling**: Combines density-based selection and uncertainty for improved sampling efficiency.
+- 🤖 **Query by Committee (QBC)**: Utilizes multiple models to select samples with the highest disagreement, promoting diverse learning.
+- ⚠️ **Risk-Based Sampling**: Weights features by correlation to label interest to enhance sampling efficiency in specific tasks.
+- 🎰 **Multi-Armed Bandit (MAB) Strategy**: Dynamically selects the best sampling method using bandit algorithms, optimizing for robust performance.
 
-### 2. 📊 Custom Visualization Tools
-The **visualizations.py** script provides functions to visualize the performance of the active learning strategies:
+### 2. 🌟 Adaptive Sampling
+- Dynamically adapts the sampling process using **MAB-based strategies**, ensuring consistent and effective performance across a variety of datasets. Balances exploration and exploitation to maximize learning impact per label.
 
-- 📈 **Accuracy Plots**: Track accuracy improvement across iterations.
-- 📊 **Comparison Charts**: Compare scores of different sampling methods on various datasets.
+### 3. 💡 Diverse Strategies
+- Offers a range of standard methods like **uncertainty sampling**, **margin sampling**, and **diversity sampling**, alongside advanced pipelines such as **Vanilla-MAB** and **Long Short-Term MAB (LST-MAB)** for sophisticated active learning needs.
 
-You can generate plots using functions like `generate_plot()` and `plot_all_datasets_results()` to visualize and compare different sampling methods.
+### 4. 📊 Comprehensive Visualization
+- Provides detailed analysis tools for visualizing and comparing sampling strategies, including:
+  - 📈 **Accuracy Plots**: Track accuracy trends across iterations.
+  - 📊 **Comparison Charts**: Highlight the performance of different sampling strategies.
+  - 🗂 **Bar and Box Plots**: Display accuracy improvements and variability for in-depth analysis. 
 
+These features make the project a versatile and powerful framework for evaluating and enhancing active learning processes.
 ---
 
 ## 📂 Files
