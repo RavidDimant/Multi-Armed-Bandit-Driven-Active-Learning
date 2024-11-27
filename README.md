@@ -61,6 +61,7 @@ If you already have the results file (results_partial_labeling_4k_s=100.pkl) ava
    - Train a machine learning model (e.g., Random Forest or Logistic Regression).
    - Apply the selected active learning strategies.
    - Save the training results and predictions for later analysis.
+Note that the execution will take a lot time because we iterate over all datasets.
 
 ### Step 3: **Analyze Results**
 1. Open the `results_analysis.ipynb` Jupyter notebook.
@@ -81,13 +82,14 @@ By following these steps, you can effectively preprocess data, train models with
 
 The `ActiveLearningPipeline` class provides several strategies for data sampling:
 
-- 🔄 **Random Sampling**: Randomly selects samples without any specific heuristic.
+- 🎲 **Random Sampling**: Randomly selects samples without any specific heuristic.
 - ❓ **Uncertainty Sampling**: Selects samples the model is least certain about to maximize learning efficiency.
 - 🌍 **Diversity Sampling**: Selects diverse samples based on pairwise distance to ensure varied data.
 - 📈 **Density-Weighted Uncertainty Sampling**: Combines density-based selection and uncertainty for improved sampling efficiency.
 - ⚖️ **Margin Sampling**: Selects samples closest to the decision boundary, maximizing the model's learning potential.
 - 🤖 **Query by Committee (QBC)**: Utilizes multiple models to select samples with the highest disagreement, promoting diverse learning.
 - 🔄 **Metropolis Hastings Sampling**: Applies a probabilistic model to iteratively select samples based on acceptance criteria, balancing exploration and exploitation.
+- ⚠️ **Feature-Based Sampling**: Weights features by correlation to label interest to enhance sampling efficiency in specific tasks.
 - 🎰 **Multi-Armed Bandit (MAB) Strategy**: Dynamically selects the best sampling method using bandit algorithms, optimizing for robust performance.
 
 ### 2. 🌟 Adaptive Sampling
@@ -150,7 +152,7 @@ The results of our experiments demonstrate the effectiveness of our MAB-driven s
 
 Overall, the results highlight the robustness of MAB-driven strategies, particularly LST-MAB, in selecting effective sampling methods across diverse datasets, often matching or surpassing individual static methods.
 
-
+---
 
  ![Image Alt](https://github.com/RavidDimant/Multi-Armed-Bandit-Driven-Active-Learning/blob/main/results/Last%20Iterations%20Result.png?raw=true)
 
