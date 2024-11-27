@@ -1,8 +1,5 @@
 # 🌟 Active Learning Project
 
-
-
-
 ## 🚀 Description
 The **Active Learning Project** aims to explore and evaluate multiple active learning strategies, with a unique emphasis on the **Multi-Armed Bandit (MAB) method**, to enhance the training process of machine learning models. By selecting the most informative data points to be labeled, the project seeks to improve model performance while minimizing the labeling budget.
 
@@ -16,6 +13,8 @@ Unlike traditional approaches, our **MAB-based pipeline** adapts dynamically, ch
 - [📝 Usage](#-usage)
 - [✨ Features](#-features)
 - [📂 Files](#-files)
+- [📊 Results](#-results)
+- [📋 Project Overview](#-project-overview)
 
 ---
 
@@ -89,3 +88,36 @@ You can generate plots using functions like `generate_plot()` and `plot_all_data
   - **glass.csv**: Original glass dataset.
   - **winequality-red.csv**: Original red wine quality dataset.
 
+---
+
+## 📊 Results
+The results of our experiments demonstrate the effectiveness of our MAB-driven sampling strategies across a variety of datasets. The following metrics summarize the key findings:
+
+- **Apple Dataset**: LST-MAB achieved a mean accuracy of **83.46** with a standard deviation of **1.90**, which was comparable to other methods like Random MAB (**83.46**) and Margin (**83.88**).
+- **Loan Dataset**: The Feature-Based method showed the highest mean accuracy (**90.84**) with LST-MAB achieving a comparable performance of **90.74**.
+- **MB Dataset**: The Random MAB strategy outperformed other methods with a mean accuracy of **95.73**, while Vanilla MAB and LST-MAB were close with mean scores of **95.48**.
+- **Passenger Dataset**: LST-MAB and Vanilla MAB performed almost identically (**92.03**), showing stability across methods.
+- **Diabetes Dataset**: All methods, including LST-MAB and Random, yielded similar results (**86.74**).
+- **Employee Dataset**: Random MAB and LST-MAB achieved the highest accuracy (**82.38**), outperforming individual static sampling methods.
+- **Shipping and Hotel Datasets**: LST-MAB and Vanilla MAB showed consistent performance across the board, with mean scores in the range of **67.69 - 82.77**.
+
+Overall, the results highlight the robustness of MAB-driven strategies, particularly LST-MAB, in selecting effective sampling methods across diverse datasets, often matching or surpassing individual static methods.
+
+---
+
+## 📋 Project Overview
+The **Active Learning Project** focuses on enhancing model efficiency through intelligent sampling. By utilizing Multi-Armed Bandit (MAB) algorithms, the project aims to dynamically adapt the sampling process, selecting the most informative data points for labeling. This approach reduces labeling costs while improving model performance across different datasets.
+
+### Setup Instructions
+1. Clone the repository and navigate to the project directory.
+2. Install the necessary dependencies using the provided `requirements.txt` file.
+3. Ensure you have the appropriate datasets in CSV format.
+
+### Running the Code
+To run the pipeline, execute the main script as follows:
+```bash
+python active_learning_pipeline.py
+```
+You can configure different parameters for datasets and sampling strategies directly within the script or through command line arguments.
+
+The results and visualizations can be generated using the **visualizations.py** script for a comprehensive understanding of the performance of various sampling methods.
