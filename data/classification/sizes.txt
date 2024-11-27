@@ -1,0 +1,6 @@
+wine queality - 1.6K
+apple quality - 4K
+diabetes - 300K
+loan - 45K
+mountains_vs_beaches_preferences - 52K
+passenger_satisfaction - 100K
