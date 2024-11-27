@@ -72,6 +72,7 @@ You can generate plots using functions like `generate_plot()` and `plot_all_data
 ## 📂 Files
 - **📜 active_learning.py**: Implements the core active learning pipeline, offering multiple sampling methods and training strategies for different datasets.
 - **📊 visualizations.py**: Provides utility functions to generate plots comparing the effectiveness of different active learning methods.
+- **📜 multi_arm_bandit.py**: Contains the implementation of the Multi-Armed Bandit (MAB) framework, which dynamically selects the most effective sampling strategy during active learning.
 - **🗂 process_data.ipynb**: Jupyter notebook for data preprocessing, exploration, and preparation prior to running the main active learning pipeline.
 - **📁 Data/**: Folder containing the processed and cleaned datasets used in the project:
   - **converted_car_data.csv**: Processed car evaluation dataset.
