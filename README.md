@@ -34,15 +34,40 @@ Unlike traditional approaches, our **MAB-based pipeline** adapts dynamically, ch
 
 ## 📝 Usage
 
-To run the active learning pipeline, make sure you have a dataset in CSV format. The pipeline expects a file path for the dataset and configurations for data splits and iterations.
+### Step 1: **Prepare the Dataset**
+1. Open the `process_data.ipynb` Jupyter notebook.
+2. Load the raw datasets located in the `Data/` folder.
+3. Run the notebook cells sequentially to clean and preprocess the datasets:
+   - Handle missing values.
+   - Normalize or scale numerical features to ensure consistency.
+   - Convert categorical features to numeric representations, such as one-hot encoding or label encoding.
+   - Save the processed datasets to the `Data/` folder for further use (e.g., `converted_car_data.csv`, `converted_diabetes_data.csv`).
 
-To execute the main pipeline:
+### Step 2: **Train the Model**
+1. Open the `active_learning.py` script.
+2. Configure the desired parameters for your experiment:
+   - Specify the dataset to use (e.g., `converted_diabetes_data.csv`).
+   - Set hyperparameters such as the number of iterations, train/test split, and budget per iteration.
+   - Choose sampling methods or pipelines to evaluate, such as **uncertainty sampling**, **margin sampling**, or **MAB strategies**.
+3. Run the script using the following command in your terminal:
+   ```bash
+   python active_learning.py
+   ```
+4. During execution, the script will:
+   - Train a machine learning model (e.g., Random Forest or Logistic Regression).
+   - Apply the selected active learning strategies.
+   - Save the training results and predictions for later analysis.
 
-```bash
-python active_learning_pipeline.py
-```
+### Step 3: **Analyze Results**
+1. Open the `results_analysis.ipynb` Jupyter notebook.
+2. Load the results generated during the training phase.
+3. Run the notebook cells to:
+   - Compare the performance of different sampling strategies.
+   - Generate visualizations such as accuracy plots, bar charts, and comparison tables.
+   - Analyze key metrics like final accuracy, mean accuracy across iterations, and accuracy improvements over the baseline.
+4. Save or export the generated visualizations and findings as needed for reports or presentations.
 
-You can modify the dataset, features, and sampling methods by changing the parameters in the script or passing them as arguments.
+By following these steps, you can effectively preprocess data, train models with active learning strategies, and evaluate the results to determine the most effective sampling approach for your dataset.
 
 ---
 
