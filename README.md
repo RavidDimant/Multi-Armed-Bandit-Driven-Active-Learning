@@ -1,8 +1,8 @@
-# 🌟 Active Learning Project
+# 🌟 Multi Armed Bandit Driven Active Learning Project
 
 ## 🚀 Description
 
-The **Active Learning Project** explores and evaluates a range of active learning strategies, with a primary focus on the **Multi-Armed Bandit (MAB)** method. The goal is to enhance the training process of machine learning models by intelligently selecting the most informative data points for labeling, thereby improving model performance while minimizing the labeling budget.
+The **Multi Armed Bandit Driven Active Learning Project** explores and evaluates a range of active learning strategies, with a primary focus on the **Multi-Armed Bandit (MAB)** method. The goal is to enhance the training process of machine learning models by intelligently selecting the most informative data points for labeling, thereby improving model performance while minimizing the labeling budget.
 
 Unlike traditional approaches, the MAB-based pipeline dynamically adapts at each iteration, selecting the most effective sampling strategy based on previous results. This adaptive methodology optimizes labeling efficiency and accelerates learning by maximizing the impact of each labeled data point. The repository includes implementations of both standard techniques, such as **Random Sampling**, **Uncertainty Sampling**, and **Diversity Sampling**, and advanced strategies like **Vanilla-MAB** and **Long Short-Term MAB (LST-MAB)**, making it a comprehensive toolkit for active learning research and applications.
 
@@ -40,7 +40,7 @@ If you already have the results file (results_partial_labeling_4k_s=100.pkl) ava
 
 ### Step 1: **Prepare the Dataset**
 1. Open the `process_data.ipynb` Jupyter notebook.
-2. Load the raw datasets located in the `Data/` folder.
+2. Load the raw datasets located in the `Data/` folder. If you have another dataset you want to explore, upload it to also to the notebook.
 3. Run the notebook cells sequentially to clean and preprocess the datasets:
    - Handle missing values.
    - Normalize or scale numerical features to ensure consistency.
@@ -85,39 +85,55 @@ The `ActiveLearningPipeline` class provides several strategies for data sampling
 - ❓ **Uncertainty Sampling**: Selects samples the model is least certain about to maximize learning efficiency.
 - 🌍 **Diversity Sampling**: Selects diverse samples based on pairwise distance to ensure varied data.
 - 📈 **Density-Weighted Uncertainty Sampling**: Combines density-based selection and uncertainty for improved sampling efficiency.
+- ⚖️ **Margin Sampling**: Selects samples closest to the decision boundary, maximizing the model's learning potential.
 - 🤖 **Query by Committee (QBC)**: Utilizes multiple models to select samples with the highest disagreement, promoting diverse learning.
-- ⚠️ **Risk-Based Sampling**: Weights features by correlation to label interest to enhance sampling efficiency in specific tasks.
+- 🔄 **Metropolis Hastings Sampling**: Applies a probabilistic model to iteratively select samples based on acceptance criteria, balancing exploration and exploitation.
 - 🎰 **Multi-Armed Bandit (MAB) Strategy**: Dynamically selects the best sampling method using bandit algorithms, optimizing for robust performance.
 
 ### 2. 🌟 Adaptive Sampling
 - Dynamically adapts the sampling process using **MAB-based strategies**, ensuring consistent and effective performance across a variety of datasets. Balances exploration and exploitation to maximize learning impact per label.
 
 ### 3. 💡 Diverse Strategies
-- Offers a range of standard methods like **uncertainty sampling**, **margin sampling**, and **diversity sampling**, alongside advanced pipelines such as **Vanilla-MAB** and **Long Short-Term MAB (LST-MAB)** for sophisticated active learning needs.
+- Offers a range of standard methods such as **Random Sampling**, **Uncertainty Sampling**, **Diversity Sampling**, **Density-Weighted Uncertainty Sampling**, **Margin Sampling**, **Query by Committee (QBC)**, and **Metropolis Hastings Sampling**.
+- Incorporates advanced adaptive pipelines like **Vanilla-MAB** and **Long Short-Term MAB (LST-MAB)** for sophisticated active learning tasks.
 
 ### 4. 📊 Comprehensive Visualization
 - Provides detailed analysis tools for visualizing and comparing sampling strategies, including:
   - 📈 **Accuracy Plots**: Track accuracy trends across iterations.
   - 📊 **Comparison Charts**: Highlight the performance of different sampling strategies.
-  - 🗂 **Bar and Box Plots**: Display accuracy improvements and variability for in-depth analysis. 
+  - 🗂 **Bar and Box Plots**: Display accuracy improvements and variability for in-depth analysis.
 
-These features make the project a versatile and powerful framework for evaluating and enhancing active learning processes.
+These features make the project a versatile and powerful framework for evaluating and enhancing active learning processes across diverse datasets.
 ---
 
 ## 📂 Files
+
 - **📜 active_learning.py**: Implements the core active learning pipeline, offering multiple sampling methods and training strategies for different datasets.
 - **📊 visualizations.py**: Provides utility functions to generate plots comparing the effectiveness of different active learning methods.
 - **📜 multi_arm_bandit.py**: Contains the implementation of the Multi-Armed Bandit (MAB) framework, which dynamically selects the most effective sampling strategy during active learning.
 - **🗂 process_data.ipynb**: Jupyter notebook for data preprocessing, exploration, and preparation prior to running the main active learning pipeline.
-- **📁 Data/**: Folder containing the processed and cleaned datasets used in the project:
-  - **converted_car_data.csv**: Processed car evaluation dataset.
-  - **converted_diabetes_data.csv**: Cleaned diabetes dataset.
-  - **converted_glass_data.csv**: Processed glass dataset for classification.
-  - **converted_wine_data.csv**: Cleaned wine quality dataset.
-  - **car_evaluation.csv**: Original car evaluation dataset.
-  - **CVD_dataset.csv**: Original cardiovascular dataset.
-  - **glass.csv**: Original glass dataset.
-  - **winequality-red.csv**: Original red wine quality dataset.
+- **📁 Results/**: Folder containing datasets used in the project:
+  - **results_partial_labeling_4k_s=100.pkl**: Pre-computed results file for direct use in analysis, bypassing data preparation and training.
+- **📁 Data/**: Folder containing datasets used in the project:
+  - **apple_data.csv**: Dataset for analyzing quality-related tasks for Apple products.
+  - **diabetes_data.csv**: Dataset for diabetes classification tasks.
+  - **employee_data.csv**: Dataset focusing on employee retention analysis.
+  - **hotel_data.csv**: Dataset analyzing hotel reservation behavior.
+  - **loan_data.csv**: Dataset for loan status prediction.
+  - **mb_data.csv**: Dataset for preferences between mountains and beaches.
+  - **passenger_data.csv**: Dataset evaluating passenger satisfaction levels.
+  - **shipping_data.csv**: Dataset analyzing shipping performance outcomes.
+  - **wine_data.csv**: Dataset for wine quality classification.
+  - **classification/**: Subdirectory containing original or intermediate processed datasets:
+    - **Employee.csv**: Original employee dataset.
+    - **apple_quality.csv**: Dataset for Apple quality analysis.
+    - **diabetes.csv**: Original diabetes dataset.
+    - **hotel_reservations.csv**: Dataset for hotel reservation analysis.
+    - **loan_data.csv**: Original loan dataset.
+    - **mountains_vs_beaches_preferences.csv**: Dataset for analyzing preferences between mountains and beaches.
+    - **passenger_satisfaction.csv**: Original dataset for passenger satisfaction analysis.
+    - **shipping.csv**: Dataset for analyzing shipping data.
+    - **wine_quality.csv**: Original wine quality dataset.
 
 ---
 
