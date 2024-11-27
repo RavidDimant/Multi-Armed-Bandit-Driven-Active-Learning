@@ -30,11 +30,6 @@ Unlike traditional approaches, our **MAB-based pipeline** adapts dynamically, ch
    cd Active-Learning-Project
    ```
 
-3. Install the necessary dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
 ---
 
 ## 📝 Usage
@@ -113,7 +108,6 @@ The **Active Learning Project** focuses on enhancing model efficiency through in
 
 ### Setup Instructions
 1. Clone the repository and navigate to the project directory.
-2. Install the necessary dependencies using the provided `requirements.txt` file.
 3. Ensure you have the appropriate datasets in CSV format.
 
 ### Running the Code
