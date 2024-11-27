@@ -34,6 +34,9 @@ Unlike traditional approaches, the MAB-based pipeline dynamically adapts at each
 
 ## 📝 Usage
 
+### Disclaimer:
+If you already have the results file (results_partial_labeling_4k_s=100.pkl) available, you can directly run results_analysis.ipynb without completing Steps 1 and 2. This file contains the pre-computed results, allowing you to skip data preprocessing and model training. If the file is unavailable, proceed with the conventional method outlined below.
+
 ### Step 1: **Prepare the Dataset**
 1. Open the `process_data.ipynb` Jupyter notebook.
 2. Load the raw datasets located in the `Data/` folder.
@@ -129,6 +132,7 @@ The results of our experiments demonstrate the effectiveness of our MAB-driven s
 - **Shipping and Hotel Datasets**: LST-MAB and Vanilla MAB showed consistent performance across the board, with mean scores in the range of **67.69 - 82.77**.
 
 Overall, the results highlight the robustness of MAB-driven strategies, particularly LST-MAB, in selecting effective sampling methods across diverse datasets, often matching or surpassing individual static methods.
+
 
 
  ![Image Alt](https://github.com/RavidDimant/Multi-Armed-Bandit-Driven-Active-Learning/blob/main/results/Last%20Iterations%20Result.png?raw=true)
