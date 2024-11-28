@@ -119,7 +119,9 @@ These features make the project a versatile and powerful framework for evaluatin
 - **📜 active_learning.py**: Implements the core active learning pipeline, offering multiple sampling methods and training strategies for different datasets.
 - **📊 visualizations.py**: Provides utility functions to generate plots comparing the effectiveness of different active learning methods.
 - **📜 multi_arm_bandit.py**: Contains the implementation of the Multi-Armed Bandit (MAB) framework, which dynamically selects the most effective sampling strategy during active learning.
-- **🗂 process_data.ipynb**: Jupyter notebook for data preprocessing, exploration, and preparation prior to running the main active learning pipeline.
+- **📄 Paper.pdf**: Detailed report documenting the methodology, experiments, results, and insights of the project.
+- **📊 Presentation.pptx**: Presentation summarizing the project's problem, motivation, methodology, experiments, and results.
+- **🗂  process_data.ipynb**: Jupyter notebook for data preprocessing, exploration, and preparation prior to running the main active learning pipeline.
 - **📁 Results/**: Folder containing datasets used in the project:
   - **results_partial_labeling_4k_s=100.pkl**: Pre-computed results file for direct use in analysis, bypassing data preparation and training.
 - **📁 Data/**: Folder containing datasets used in the project:
